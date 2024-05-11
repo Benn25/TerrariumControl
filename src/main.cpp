@@ -29,6 +29,7 @@
 //
 // in User_Setup uncomment in section 2:
 
+
 #include <ESP32Time.h>
 ESP32Time rtc(0);  // offset in param, but dont use it
 int HoldHour[24]; //the hour to hold when setting up a time
@@ -38,6 +39,7 @@ char const* HoldMonth[] = {
     "Jan", "Feb", "Mar", "Apr", "May", "Jun",
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
   };
+
 
 /*/////////////Usefull RTC get shit /////////////////
 //  Serial.println(rtc.getTime());          //  (String) 15:24:38
@@ -380,16 +382,21 @@ void toggleSW(int x, int y, bool state, const char* label) {
   static bool oldState = state;
   static int augment = 2; //size to add to the contener to be bigger that the dot
   static int rad = 9; //size of the round in px
-  static int interSpace = rad;
+  static int interSpace = rad/3;
   static int wide = 4 * rad + interSpace + augment * 2; //wideness L to R(max)
   static int disp;
   static int R = 31;
-  static int G = 10;
-  static int B = 8;
+  static int G = 20;
+  static int B = 23;
+
+  if (page != last_page) {
+    //state changed, nee to draw
+    Serial.println("redraw the button");
+    }
 
   if (oldState != state) {
     //state changed, nee to draw
-    Serial.println("refreshed state");
+   // Serial.println("refreshed state");
     }
 
   if (disp != state * 10 + 1) {//do a cool animation
@@ -403,12 +410,12 @@ void toggleSW(int x, int y, bool state, const char* label) {
     tft.setTextColor(TEXT_COLOR);
     //tft.setFreeFont(TT1);
     tft.setTextSize(1);
-    tft.fillSmoothRoundRect(x - wide / 2, y - rad - 2, wide + 1, rad * 2 + augment * 2 + 1, rad + augment, ((map(disp, 1, 11, 8, 28) << 11) | G | (map(disp, 11, 1, 8, 31) << 5)), BACKGROUND_COLOR);
+    tft.fillSmoothRoundRect(x - wide / 2, y - rad - 2, wide + 1, rad * 2 + augment * 2 + 1, rad + augment, ((map(disp, 1, 11, 8, 28) << 11) | (G << 5) | map(disp, 11, 1, 8, B)), BACKGROUND_COLOR);
     tft.setTextDatum(CR_DATUM);
     if (disp > 8) tft.drawString("OFF", x+2, y + 1, 1);
     tft.setTextDatum(CL_DATUM);
     if (disp < 3) tft.drawString("ON", x+3, y+1, 1);
-    tft.fillSmoothCircle(x - rad - interSpace / 2 + map(disp, 1, 11, 0, 2 * rad + interSpace), y, rad, TEXT_COLOR, ((map(disp, 1, 11, 8, 28) << 11) | G | (map(disp, 11, 1, 8, 31) << 5)));
+    tft.fillSmoothCircle(x - rad - interSpace / 2 + map(disp, 1, 11, 0, 2 * rad + interSpace), y, rad, TEXT_COLOR, ((map(disp, 1, 11, 8, 28) << 11) | (G << 5) | map(disp, 11, 1, 8, B) << 5));
     tft.setFreeFont(GLCD);
     tft.setTextSize(1);
     }
@@ -436,6 +443,7 @@ void setup() {
   mySensor.setTempOffset(-6.0);
 
   tft.setTextSize(1);
+  
 
   analogWrite(TFT_BL, 255);
 
@@ -483,7 +491,7 @@ void loop() {
 
    debugval++;
    int test = sineWave(debugval, 2);
-   FanOut = test;
+  // FanOut = test;
    //Serial.println(test);
 
    static uint32_t lastTime = 0;  // holds its value after every iteration of loop
@@ -580,7 +588,8 @@ void loop() {
           while (
             tft.getTouch(&t_x, &t_y)) {  // screen is pressed, stop everything
             }
-          if (page++ > 0) page = 0;  // skip to option screen
+          FanOut = !FanOut;
+          //if (page++ > 0) page = 0;  // skip to option screen
           }
         }
       if (page == 1) {  // to do on pressed on page options
@@ -608,6 +617,7 @@ void loop() {
           while (
             tft.getTouch(&t_x, &t_y)) {  // screen is pressed, stop everything
             }
+          //FanOut = !FanOut;
           if (page++ > 0) page = 0;  // skip to option screen
           }
         }
