@@ -1,5 +1,5 @@
  ## Terrarium controller
-#A controller and monitoring unit for terrariums.
+A controller and monitoring unit for terrariums.
 light and hygrometry are monitored. The outputs are mist maker (or rain), pump, main light, secondary light and fan. a SPI LCD screen (I use a 320*240 ILI9341) in landscape orientation is used for the display.
 
 -Based on ESP32
