@@ -8,6 +8,8 @@
 #define MAXBL 255    // max backlight
 #define MINBL 80     // min backlight
 #define max_temp 45  // maximum reachable
+#define FanWorkTime 60 //duration you want the fan to work for
+
 
 #define DEG2RAD 0.0174532925
 
