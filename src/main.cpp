@@ -116,7 +116,7 @@ uint16_t RGB888toRGB565(const char* rgb32_str_) {
   return (rgb32 >> 8 & 0xf800) | (rgb32 >> 5 & 0x07e0) | (rgb32 >> 3 & 0x001f);
   }
 
-int IOstates[1440][6] = {}; //settings data, when to light up, when to start the pump etc...
+int IOstates[288][6] = {}; //settings data, when to light up, when to start the pump etc...
 
 int graphLine[320][6] = {};  // building the array that saves the data for the graph
                              // 0:temp, 1:hygro, 2:fan, 3:light, 4: mist, 5: secondary light
@@ -216,6 +216,25 @@ void metter(int x, int y, int lowBound, int highBound, float value,
   tft.drawArc(x, y, 45, 45 - 3, endAngle, 360 - 50, emptyColour, BACKGROUND_COLOR, true);
   }
 
+void drawOKandCancel(){ //the OK and cancel buttons
+  //OK button bien phat
+  tft.setFreeFont(FMB12);
+
+  tft.setTextDatum(MC_DATUM);
+  tft.fillSmoothRoundRect(60 - but_W / 2, tft.height() - but_H  - 5, but_W, but_H, but_H / 2, TEXT_COLOR, BACKGROUND_COLOR);
+  tft.setTextColor(TFT_BLACK, TEXT_COLOR);
+  tft.drawString("OK", 60, tft.height() - 6 -but_H/2, 1);
+
+  
+  tft.fillSmoothRoundRect(tft.width() - 60 - but_W / 2, tft.height() - but_H - 5, but_W, but_H, but_H / 2, TEXT_COLOR, BACKGROUND_COLOR);
+  tft.setTextColor(TFT_BLACK, TEXT_COLOR);
+  tft.drawString("Cancel", tft.width() - 60, tft.height() - 6 - but_H / 2, 1);
+
+  tft.setFreeFont();
+
+
+  }
+
 void drawSplash(int p) {  // draw the splash coresponding to the page
   // tft.setTextSize(1);
   if (p == 0) {  //////////////////////////////// Splash on main page
@@ -246,12 +265,6 @@ void drawSplash(int p) {  // draw the splash coresponding to the page
     }
 
   if (p == 1) { //////////////////////////////////// Splash on option screen
-    //  Create slider using parameters and plot at UL
-    // s1.drawSlider(3, 28);
-    // s2.drawSlider(3, 49);
-    // sy.drawSlider(3, 28+21*2);
-    // sm.drawSlider(3, 28+21*3);
-    // sd.drawSlider(3, 28+21*4);
     int16_t x, y;                         // x and y can be negative
     uint16_t w, h;                        // Width and height
     s1.getBoundingRect(&x, &y, &w, &h);   // Update x,y,w,h with bounding box
@@ -266,22 +279,7 @@ void drawSplash(int p) {  // draw the splash coresponding to the page
     tft.fillRect(x, y, w, h, TFT_BLACK);  // Draw rectangle outline
     // tft.fillSmoothRoundRect(tft.width() / 2 - 42, LowGraphPos + 1, 84, 32, 3,
     // TFT_WHITE, BACKGROUND_COLOR);
-    //OK button bien phat
-    tft.setTextDatum(MC_DATUM);
-    tft.fillSmoothRoundRect(50, 200, 50, 40, 3, TEXT_COLOR, BACKGROUND_COLOR);
-    tft.setTextColor(TFT_BLACK, TEXT_COLOR);
-    tft.drawString("OK", 50 + 50 / 2, 200 + 40 / 2 + 2, 4);
-    s1.getSliderPosition();
-    s2.getSliderPosition();
-    sy.getSliderPosition();
-    sm.getSliderPosition();
-    sd.getSliderPosition();
-
-    s1.setSliderPosition(rtc.getHour());
-    s2.setSliderPosition(rtc.getMinute());
-    sy.setSliderPosition(rtc.getYear());
-    sm.setSliderPosition(rtc.getMonth()+1);
-    sd.setSliderPosition(rtc.getDay());
+    drawOKandCancel();
 
     tft.setTextColor(TEXT_COLOR, TFT_BLACK);
     tft.setTextDatum(CL_DATUM);
@@ -289,15 +287,37 @@ void drawSplash(int p) {  // draw the splash coresponding to the page
     tft.drawString("min:", 0, 29 +28 + 22 / 2, 1);
     tft.drawString("year:", 0, 29 +28*2 + 22 / 2, 1);
     tft.drawString("month:", 0, 29 +28*3 + 22 / 2, 1);
-    tft.drawString("day:", 0, 29 +28*4 + 22 / 2, 1);
+    tft.drawString("day:", 0, 29 + 28 * 4 + 22 / 2, 1);
+    
+    s1.setSliderPosition(rtc.getHour() - 1);
+    s2.setSliderPosition(rtc.getMinute()-1);
+    sy.setSliderPosition(rtc.getYear()+1);
+    sm.setSliderPosition(rtc.getMonth() + 1-1);
+    sd.setSliderPosition(rtc.getDay()-1);
+
+    s1.setSliderPosition(rtc.getHour());
+    s2.setSliderPosition(rtc.getMinute());
+    sy.setSliderPosition(rtc.getYear());
+    sm.setSliderPosition(rtc.getMonth()+1);
+    sd.setSliderPosition(rtc.getDay());
     }
   
   if (page == 2) {
+    tft.drawString("---SETTINGS---", tft.width() / 2, 15, 4); //page top text
     //OK button bien phat
-    tft.setTextDatum(MC_DATUM);
-    tft.fillSmoothRoundRect(50, 200, 50, 40, 3, TEXT_COLOR, BACKGROUND_COLOR);
-    tft.setTextColor(TFT_BLACK, TEXT_COLOR);
-    tft.drawString("OK", 50 + 50 / 2, 200 + 40 / 2 + 2, 4);
+    drawOKandCancel();
+
+    int16_t x, y;                         // x and y can be negative
+    uint16_t w, h;                        // Width and height
+    s1.getBoundingRect(&x, &y, &w, &h);   // Update x,y,w,h with bounding box
+    tft.fillRect(x, y, w, h, TFT_BLACK);  // Draw rectangle outline
+    s2.getBoundingRect(&x, &y, &w, &h);   // Update x,y,w,h with bounding box
+    tft.fillRect(x, y, w, h, TFT_BLACK);  // Draw rectangle outline
+
+    s1.setSliderPosition(rtc.getHour() - 1);
+    s2.setSliderPosition(rtc.getMinute() - 1);
+    s1.setSliderPosition(rtc.getHour());
+    s2.setSliderPosition(rtc.getMinute()); 
     }
   }
 
@@ -338,16 +358,16 @@ void drawGraph() {
 void drawDateBloc() { //draw the date and time of the main page
   tft.setTextDatum(TC_DATUM);
   tft.fillSmoothRoundRect(
-    tft.width() / 2 - (tft.drawString(rtc.getTime("%a, %b %d %H:%M"), tft.width() / 2, LowGraphPos + 2, 1)+6) / 2, /*X pos*/
-    LowGraphPos + 2, /*Y pos*/
-    tft.drawString(rtc.getTime("%a, %b %d %H:%M"), tft.width() / 2, LowGraphPos + 2, 1)+6,/*W*/
+    tft.width() / 2 - (tft.drawString(rtc.getTime("%a, %b %d %H:%M"), tft.width() / 2, LowGraphPos + 2+1, 1)+6) / 2, /*X pos*/
+    LowGraphPos + 2-1, /*Y pos*/
+    tft.drawString(rtc.getTime("%a, %b %d %H:%M"), tft.width() / 2, LowGraphPos + 2+1, 1)+6,/*W*/
     10, /*H*/
     3,/*rad*/
     TEXT_COLOR,
     BACKGROUND_COLOR);
   tft.setTextColor(TFT_BLACK);
   // tft.setFreeFont(TT1);
-  tft.drawString(rtc.getTime("%a, %b %d %H:%M"), tft.width() / 2, LowGraphPos + 2, 1);
+  tft.drawString(rtc.getTime("%a, %b %d %H:%M"), tft.width() / 2, LowGraphPos + 2+1, 1);
   //tft.setTextDatum(TC_DATUM);
   //tft.drawString(rtc.getTime("%H:%M"), tft.width() / 2, LowGraphPos+15, 2);
   }
@@ -551,7 +571,14 @@ void setup() {
   sy.drawSlider(30, 28 + 28 * 2);
   sm.drawSlider(30, 28 + 28 * 3);
   sd.drawSlider(30, 28 + 28 * 4);
-  
+
+  /////for debug ////
+  //populate with garbage
+  for (int i = 0; i < 288; i++) {
+    IOstates[i][0] = (i % 35 == 0);
+    IOstates[i][1] = (i % 55 == 0);
+    }
+
   drawSplash(page);  // draw the static shit of the current
   }
 
@@ -564,13 +591,13 @@ void loop() {
     drawSplash(page);  // draw the splash of the coresponding page
     }
 
-   debugval++;
-   int test = sineWave(debugval, 2);
+  debugval++;
+  int test = sineWave(debugval, 2);
   // FanOut = test;
    //Serial.println(test);
 
-   static uint32_t lastTime = 0;  // holds its value after every iteration of loop
-  if (millis() - lastTime >= 2000 || lastTime == 0){  // read sensor every 2000 milliseconds
+  static uint32_t lastTime = 0;  // holds its value after every iteration of loop
+  if (millis() - lastTime >= 2000 || lastTime == 0) {  // read sensor every 2000 milliseconds
     Serial.println((String)"page: " + page);
     lastTime = millis();
     // read DHT data every 2 sec here
@@ -602,7 +629,7 @@ void loop() {
   // Serial.println(dispHum);
   static uint32_t lastTimeForRef = 0;  // holds its value after every iteration of loop
   if (page == 0) {  // refresh every loop on main screen
-    if (millis() - lastTimeForRef >= 1000 || lastTimeForRef == 0 || last_page !=page) {  // low refresh rate
+    if (millis() - lastTimeForRef >= 1000 || lastTimeForRef == 0 || last_page != page) {  // low refresh rate
       lastTimeForRef = millis();
       //Serial.println("refresh the graph");
       //////////draw the graph////////////
@@ -647,7 +674,12 @@ void loop() {
       lastTimeForRef = millis();
       //probably nothing to do at low refresh rate here....
       tft.setTextPadding(tft.width());
-      rtc.setTime(00, s2.getSliderPosition(), s1.getSliderPosition(), sd.getSliderPosition(), sm.getSliderPosition(), sy.getSliderPosition());
+      rtc.setTime(00,
+        s2.getSliderPosition(),
+        s1.getSliderPosition(),
+        sd.getSliderPosition(),
+        sm.getSliderPosition(),
+        sy.getSliderPosition());
       }
     // option page, this will refresh every loop
     //  tft.setTextDatum(MC_DATUM);
@@ -661,41 +693,71 @@ void loop() {
     sy.getSliderPosition();
     sm.getSliderPosition();
     sd.getSliderPosition();
-    tft.drawString(rtc.getDateTime(), tft.width()/2, 15, 4);
+    tft.drawString(rtc.getDateTime(), tft.width() / 2, 15, 4);
     }
 
   if (page == 2) { //things to refresh every loop on settings screen 
-    
+    //draw the sliders for settings hours and min and get the min of the day
+    //s1.getSliderPosition();
+    //s2.getSliderPosition();
+
+    int minOfDay = s1.getSliderPosition() * 60 + s2.getSliderPosition();
+    int index = (minOfDay) / 5;
+    int tip_X = index + (tft.width() - 288) / 2;
+      
+      tft.fillRect(0, timeLine_Y - 4, tft.width(), 4, BACKGROUND_COLOR);
+      //tft.drawFastVLine(tip_X, timeLine_Y - 10, 10, TFT_WHITE);
+      tft.fillTriangle(tip_X, timeLine_Y - 1, tip_X - 3, timeLine_Y - 1 - 3, tip_X + 3, timeLine_Y - 1 - 3, TFT_WHITE);
+      tft.setTextDatum(BC_DATUM);
+      tft.setTextPadding(tft.width());
+      tft.setTextColor(TEXT_COLOR, BACKGROUND_COLOR);
+      tft.drawString("12:20", tip_X, timeLine_Y - 5, 1);
+      tft.setTextPadding(0);
+      for (int a = 0; a < 288; a++) { //draw the timeline of the day, min by min
+
+      for (int chan = 0; chan < 6; chan++) {
+        if (chan == 0){
+          uint16_t pixcolor = IOstates[a][chan] ? TFT_CYAN : TFT_BLACK;
+          tft.drawFastVLine(a + (tft.width() - 288) / 2, timeLine_Y + chan,3, pixcolor);
+          }
+        if (chan == 1) {
+          uint16_t pixcolor = IOstates[a][chan] ? TFT_GOLD : TFT_BLACK;
+          tft.drawFastVLine(a + (tft.width() - 288) / 2, timeLine_Y + chan*3,3, pixcolor);
+          }
+
+        }
+      }
+
     }
   // delay(25);
   last_page = page;  // updating the last page, for comparison
 
-/////////// touch detection routine ///////////////
-  
+  /////////// touch detection routine ///////////////
+
   static uint32_t scanTime = millis();
   uint16_t t_x = 9999, t_y = 9999;  // To store the touch coordinates
   // Scan keys every 50ms at most
-  if (millis() - scanTime >=50) {  // Pressed will be set true if there is a valid touch on the screen
+  if (millis() - scanTime >= 50) {  // Pressed will be set true if there is a valid touch on the screen
     bool pressed = tft.getTouch(&t_x, &t_y);
     scanTime = millis();
     if (pressed) {  // to check and do when pressed
       lastPress = millis();
 
       if (page == 0) {            // to do when pressed on main page
-        if (t_y < LowGraphPos && t_y > LowGraphPos-GraphH) {  // touch on the graph
+        if (t_y < LowGraphPos && t_y > LowGraphPos - GraphH) {  // touch on the graph
           // drawGraph();
           drawTags(t_x);
           }
 
         else {  // press outside of the graph
           if (t_y < 10 &&
-              t_x < 100 &&
-              t_x > 40) {
+            t_x < 100 &&
+            t_x > 40) {
             page = 1; //go to clock setup page
             }
 
-          if (t_x < tft.width()-40 &&
-            t_x > tft.width()-100 &&
+          if (t_x < tft.width() - 40 &&
+            t_x > tft.width() - 100 &&
             t_y < 10) {
             page = 2; //go to main setup page
             }
@@ -735,18 +797,18 @@ void loop() {
             t_x > mistSW.x - 20) { //fan toggle Switch touched
             mistOut = !mistOut;
             }
-        
-        while (
+
+          while (
             tft.getTouch(&t_x, &t_y)) {  // screen is pressed, stop everything
             }
-        
-        FanSW.state = FanOut;
-        pumpSW.state = pumpOut;
-        lightSW.state = lightOut;
-        seclightSW.state = secLightOut;
-        mistSW.state = mistOut;
-          
-          
+
+          FanSW.state = FanOut;
+          pumpSW.state = pumpOut;
+          lightSW.state = lightOut;
+          seclightSW.state = secLightOut;
+          mistSW.state = mistOut;
+
+
           }
         }
       if (page == 1) {  // to do on pressed on clock setup page
@@ -768,7 +830,7 @@ void loop() {
             sd.getSliderPosition();
             }
           }
-        
+
         if (t_x > 50 && t_x < 100 && t_y > 200 &&
           t_y < 200 + 40) {  // check if the return button is pressed
           while (
@@ -777,7 +839,16 @@ void loop() {
           page = 0;  // return to main screen
           }
         }
-      if (page == 2) { //to do on pressed on settings page
+      if (page == 2) {         //to do on pressed on settings page
+        if (tft.getTouch(&t_x, &t_y, 250)) {
+          if (s1.checkTouch(t_x, t_y)) {
+            s1.getSliderPosition();
+            }
+          if (s2.checkTouch(t_x, t_y)) {
+            s2.getSliderPosition();
+            }
+          }
+
         if (t_x > 50 && t_x < 100 && t_y > 200 &&
           t_y < 200 + 40) {  // check if the return button is pressed
           while (
@@ -786,15 +857,14 @@ void loop() {
           page = 0;  // return to main screen
           }
         }
-      }
-    else  // when no touch detected
-      {
+      else  // when no touch detected
+        {
+        }
       }
     }
-
-  /////////////Updating the LCD brightness/////////////////
-  int BLintens = 500 - (millis() - lastPress) / 10;
-  if (BLintens > MAXBL) BLintens = MAXBL;
-  if (BLintens < MINBL) BLintens = MINBL;
-  analogWrite(TFT_BL, BLintens);
-  }
+    /////////////Updating the LCD brightness/////////////////
+    int BLintens = 500 - (millis() - lastPress) / 10;
+    if (BLintens > MAXBL) BLintens = MAXBL;
+    if (BLintens < MINBL) BLintens = MINBL;
+    analogWrite(TFT_BL, BLintens);
+    }
