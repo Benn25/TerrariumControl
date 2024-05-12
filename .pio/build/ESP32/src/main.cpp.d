@@ -233,4 +233,4 @@
  .pio/libdeps/ESP32/TFT_eWidget/src/widgets/graph/GraphWidget.h \
  .pio/libdeps/ESP32/TFT_eWidget/src/widgets/graph/TraceWidget.h \
  .pio/libdeps/ESP32/TFT_eWidget/src/widgets/graph/GraphWidget.h \
- lib/TFT_eSPI/Free_Fonts.h
+ lib/TFT_eSPI/Free_Fonts.h src/settings.h

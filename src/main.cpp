@@ -89,6 +89,7 @@ int last_page = 0;  // track the change of page, to redraw everything
 #include <TFT_eSPI.h>  // hardware-specific library
 #include <TFT_eWidget.h>
 #include "Free_Fonts.h"
+#include <settings.h>
 
 TFT_eSPI tft = TFT_eSPI();             // invoke custom library
 TFT_eSprite knob = TFT_eSprite(&tft);  // Sprite for the slide knob
@@ -102,25 +103,15 @@ SliderWidget sd = SliderWidget(&tft, &knob);  // Slider  widget for day
 #define CALIBRATION_FILE "/TouchCalData1"
 #define REPEAT_CAL false
 
-#define BUTTON_W 60
-#define BUTTON_H 30
 
-#define LowGraphPos 142  // Y coordinate of the lower part of the graph
-#define GraphH 130       // height of the graph
-#define mettersYpos 200  // Y position of the round metters
 
-#define MAXBL 255    // max backlight
-#define MINBL 80     // min backlight
-#define max_temp 45  // maximum reachable
-
-#define DEG2RAD 0.0174532925
 
 ///////////output states//////////////
-bool FanOut = 0;
-
-
-
-
+bool FanOut = 0; //air fan
+bool mist = 0; //mist
+bool light = 0; //main light
+bool pump = 0; //water pump
+int secLight = 0; //secondary light
 
 
 uint16_t RGB888toRGB565(const char* rgb32_str_) {
@@ -128,35 +119,10 @@ uint16_t RGB888toRGB565(const char* rgb32_str_) {
   return (rgb32 >> 8 & 0xf800) | (rgb32 >> 5 & 0x07e0) | (rgb32 >> 3 & 0x001f);
   }
 
-// some principal color definitions
-// RGB 565 color picker at
-// https://ee-programming-notepad.blogspot.com/2016/10/16-bit-color-generator-picker.html
-// in the form ((R << 11) | (G << 5) | B), max vales are R=31, G=63, B=31
 
-#define WHITE 0xFFFF
-#define BLACK 0x0000
-#define BLUE 0x001F
-#define RED 0xF800
-#define GREEN 0x07E0
-#define CYAN 0x07FF
-#define MAGENTA 0xF81F
-#define YELLOW 0xFFE0
-#define GREY 0x2108
-#define SCALE0 0xC655  // accent color for unused scale segments
-#define SCALE1 0x5DEE  // accent color for unused scale segments
-#define TEXT_COLOR 0xEF3B  // 0xFFFF        
-#define BACKGROUND_COLOR 0x18a3//0x20E4  //((3 << 11) | (8 << 5) | 3)     //sort of dark grey super dark
-#define TEMP_COLOR 0xF6F4  //((20 << 11) | (40 << 5) | 20)
-#define HYGRO_COLOR 0x7DF8
 
-// char Kawauso = 0xCD5C08;
-// char* label[] = {"","Celsius","%","AMP", "VOLT"};            // some custom
-// gauge labels
-
-char lab[2][10] = { "temp", "hygro" };
-
-int graphLine[320][4] = {};  // building the array that saves the data for the graph
-                             // 0:temp, 1:hygro, 2:fan ON, 3:light ON
+int graphLine[320][5] = {};  // building the array that saves the data for the graph
+                             // 0:temp, 1:hygro, 2:fan, 3:light, 4: mist, 5: secondary light
 
 void touch_calibrate() {
 
@@ -397,8 +363,6 @@ public:
     static int R = 31;
     static int G = 20;
     static int B = 23;
-
-    //state = !state; //invert it, to track
 
     if (page != last_page) {
       //state changed, nee to draw
@@ -650,6 +614,7 @@ void loop() {
           while (
             tft.getTouch(&t_x, &t_y)) {  // screen is pressed, stop everything
             }
+          
           FanOut = !FanOut;
           FanSW.state = FanOut;
           //if (page++ > 0) page = 0;  // skip to option screen
