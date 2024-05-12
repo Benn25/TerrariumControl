@@ -88,8 +88,8 @@ int last_page = 0;  // track the change of page, to redraw everything
 #include <SPI.h>
 #include <TFT_eSPI.h>  // hardware-specific library
 #include <TFT_eWidget.h>
-
 #include "Free_Fonts.h"
+
 TFT_eSPI tft = TFT_eSPI();             // invoke custom library
 TFT_eSprite knob = TFT_eSprite(&tft);  // Sprite for the slide knob
 
@@ -378,6 +378,64 @@ void drawTags(int x) {  // draw the values labels on the graph
   tft.setTextDatum(MC_DATUM);
   }
 
+
+class classtoggleSW {
+public:
+  int x;
+  int y;
+  bool state;
+  const char* label;
+
+
+  void draw() {
+    static bool oldState = state;
+    static int augment = 2; //size to add to the contener to be bigger that the dot
+    static int rad = 9; //size of the round in px
+    static int interSpace = rad / 3;
+    static int wide = 4 * rad + interSpace + augment * 2; //wideness L to R(max)
+    static int disp;
+    static int R = 31;
+    static int G = 20;
+    static int B = 23;
+
+    //state = !state; //invert it, to track
+
+    if (page != last_page) {
+      //state changed, nee to draw
+      Serial.println("redraw the button");
+      }
+
+    if (oldState != state) {
+      //state changed, nee to draw
+     // Serial.println("refreshed state");
+      }
+
+    if (disp != state * 10 + 1) {//do a cool animation
+      disp < state * 10 + 1 ? disp++ : disp--;
+      tft.setTextPadding(1);
+      tft.setTextDatum(CR_DATUM);
+      tft.setTextColor(TFT_BLACK);
+      tft.fillSmoothRoundRect(x - wide / 2 - tft.drawString(label, x - rad * 2 - interSpace / 2 - 5, y + 1, 1) - 7, y - rad - 2 + 4, wide + 1 + tft.drawString(label, 10, 10, 1), rad * 2 + augment * 2 + 1 - 8, rad + augment, TFT_SILVER, BACKGROUND_COLOR);
+      tft.drawString(label, x - rad * 2 - interSpace / 2 - 5, y + 1, 1);
+      //Serial.println(disp);
+      tft.setTextColor(TEXT_COLOR);
+      //tft.setFreeFont(TT1);
+      tft.setTextSize(1);
+      tft.fillSmoothRoundRect(x - wide / 2, y - rad - 2, wide + 1, rad * 2 + augment * 2 + 1, rad + augment, ((map(disp, 1, 11, 8, 28) << 11) | (G << 5) | map(disp, 11, 1, 8, B)), BACKGROUND_COLOR);
+      tft.setTextDatum(CR_DATUM);
+      if (disp > 8) tft.drawString("OFF", x + 2, y + 1, 1);
+      tft.setTextDatum(CL_DATUM);
+      if (disp < 3) tft.drawString("ON", x + 3, y + 1, 1);
+      tft.fillSmoothCircle(x - rad - interSpace / 2 + map(disp, 1, 11, 0, 2 * rad + interSpace), y, rad, TEXT_COLOR, ((map(disp, 1, 11, 8, 28) << 11) | (G << 5) | map(disp, 11, 1, 8, B) << 5));
+      tft.setFreeFont(GLCD);
+      tft.setTextSize(1);
+      }
+    oldState = state;
+    }
+
+  };
+
+
 void toggleSW(int x, int y, bool state, const char* label) {
   static bool oldState = state;
   static int augment = 2; //size to add to the contener to be bigger that the dot
@@ -422,11 +480,23 @@ void toggleSW(int x, int y, bool state, const char* label) {
   oldState = state;
   }
 
-
-
 long debugval = 0;  // shit to increase to simulate changing values
+
+classtoggleSW FanSW;
+
 void setup() {
   Serial.begin(115200);
+  tft.init();
+  tft.setRotation(3);  // display in portrait
+  tft.fillScreen(BACKGROUND_COLOR);
+  tft.setTextSize(1);
+  analogWrite(TFT_BL, 255);
+
+  FanSW.x = tft.width() / 2;
+  FanSW.y = LowGraphPos + 30;
+  FanSW.state = FanOut;
+  FanSW.label = "FAN2";
+  
   rtc.setTime(00, 10, 22, 6, 5, 2024);  // 17th Jan 2021 15:24:30
 
   Serial.println("starting TFT display");
@@ -435,17 +505,9 @@ void setup() {
   //  Get it back with unsigned int val = preferences.getUInt("NameOfTheThing",
   //  0); 0 is the def val, when nothing is saved yet
 
-  tft.init();
-  tft.setRotation(3);  // display in portrait
-  tft.fillScreen(BACKGROUND_COLOR);
 
   // mySensor.setHumOffset(10);
   mySensor.setTempOffset(-6.0);
-
-  tft.setTextSize(1);
-  
-
-  analogWrite(TFT_BL, 255);
 
   // Calibrate the touch screen and retrieve the scaling factors
   touch_calibrate();
@@ -541,7 +603,7 @@ void loop() {
 
     //////////draw toggle buttons ////////////
     toggleSW(tft.width()/2, LowGraphPos+15,FanOut, "FAN");
-
+    FanSW.draw();
     
     } //end shit to draw on main page
 
@@ -589,6 +651,7 @@ void loop() {
             tft.getTouch(&t_x, &t_y)) {  // screen is pressed, stop everything
             }
           FanOut = !FanOut;
+          FanSW.state = FanOut;
           //if (page++ > 0) page = 0;  // skip to option screen
           }
         }
