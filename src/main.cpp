@@ -221,7 +221,17 @@ void drawSplash(int p) {  // draw the splash coresponding to the page
   if (p == 0) {  //////////////////////////////// Splash on main page
     // tft.setTextSize(1);
     //  tft.drawRoundRect(0, 240-95, 320 - 1, 94, 6, TFT_SILVER);
-    //  tft.fillRect(5, 120, 314, 20, TFT_BLACK);
+    //draw the 2 options buttons (clock and settings)
+    //tft.fillRect(20, 0, 20, 9, TEXT_COLOR);
+    tft.setTextPadding(0);
+    tft.setTextDatum(TL_DATUM);
+    tft.setTextColor(TFT_BLACK,TEXT_COLOR);
+    tft.drawString("clock", 40, 2, 1);
+    tft.setTextDatum(TR_DATUM);
+    tft.setTextColor(TFT_BLACK, TEXT_COLOR);
+    tft.drawString("settings", tft.width()-40, 2, 1);
+
+
     tft.setTextDatum(BC_DATUM);
     tft.setTextColor(HYGRO_COLOR);
     tft.drawString("100%", 307, LowGraphPos - GraphH - 1, 1);
@@ -280,6 +290,14 @@ void drawSplash(int p) {  // draw the splash coresponding to the page
     tft.drawString("year:", 0, 29 +28*2 + 22 / 2, 1);
     tft.drawString("month:", 0, 29 +28*3 + 22 / 2, 1);
     tft.drawString("day:", 0, 29 +28*4 + 22 / 2, 1);
+    }
+  
+  if (page == 2) {
+    //OK button bien phat
+    tft.setTextDatum(MC_DATUM);
+    tft.fillSmoothRoundRect(50, 200, 50, 40, 3, TEXT_COLOR, BACKGROUND_COLOR);
+    tft.setTextColor(TFT_BLACK, TEXT_COLOR);
+    tft.drawString("OK", 50 + 50 / 2, 200 + 40 / 2 + 2, 4);
     }
   }
 
@@ -349,7 +367,6 @@ void drawTags(int x) {  // draw the values labels on the graph
   tft.setTextDatum(MC_DATUM);
   }
 
-
 class classtoggleSW {
 public:
   int x;
@@ -379,7 +396,7 @@ public:
      // Serial.println("refreshed state");
       }
 
-    if (disp != state * 10 + 1) {//do a cool animation
+    if (disp != state * 10 + 1 || page != last_page) {//do a cool animation
       disp < state * 10 + 1 ? disp++ : disp--;
       tft.setTextPadding(1);
       tft.setTextDatum(CR_DATUM);
@@ -403,7 +420,6 @@ public:
     }
 
   };
-
 
 void toggleSW(int x, int y, bool state, const char* label) {
   static bool oldState = state;
@@ -463,25 +479,35 @@ void setup() {
 
   int ToggleSW_X = tft.width() / 2 + 20;
   
-  FanSW.x = ToggleSW_X;
-  FanSW.y = LowGraphPos + 27;
+  FanSW.x = ToggleSW_X+28;
+  FanSW.y = LowGraphPos + 24 + 21*3;
   FanSW.state = FanOut;
-  FanSW.label = "FAN";
+  FanSW.label = "Fan";
   FanSW.disp = 0;
-  
+
+  pumpSW.x = ToggleSW_X - 40;
+  pumpSW.y = LowGraphPos + 24 +21 *3 ;
+  pumpSW.state = pumpOut;
+  pumpSW.label = "Pump";
+  pumpSW.disp = 0;
+
   lightSW.x = ToggleSW_X;
-  lightSW.y = LowGraphPos + 27 + 26*1;
+  lightSW.y = LowGraphPos + 24 + 21*1;
   lightSW.state = lightOut;
-  lightSW.label = "light";
+  lightSW.label = "Light";
   lightSW.disp = 0;
   
   seclightSW.x = ToggleSW_X;
-  seclightSW.y = LowGraphPos + 27 + 26*2;
+  seclightSW.y = LowGraphPos + 24 + 21*2;
   seclightSW.state = secLightOut;
-  seclightSW.label = "sunset";
+  seclightSW.label = "Sunset";
   seclightSW.disp = 0;
 
-
+  mistSW.x = ToggleSW_X;
+  mistSW.y = LowGraphPos + 24;
+  mistSW.state = mistOut;
+  mistSW.label = "Mist";
+  mistSW.disp = 0;
 
   
   rtc.setTime(00, 10, 22, 6, 5, 2024);  // 17th Jan 2021 15:24:30
@@ -584,22 +610,39 @@ void loop() {
       drawDateBloc();
       }
     //////////draw the 2 metters////////////
-    metter(60 /*x coord*/, mettersYpos /*y coord*/, 0 /*min val*/, 50 /*max*/,
-      dispTemp / 100, TEMP_COLOR, TFT_BLACK, temp, 0);
-    metter(320 - 60, mettersYpos, 0, 100, dispHum / 100, HYGRO_COLOR,
-      TFT_BLACK, hum, 1);
+    metter(50 /*x coord*/,
+      mettersYpos /*y coord*/,
+      0 /*min val*/,
+      50 /*max*/,
+      dispTemp / 100,
+      TEMP_COLOR,
+      TFT_BLACK,
+      temp,
+      0);
+    metter(tft.width() - 50,
+      mettersYpos,
+      0,
+      100,
+      dispHum / 100,
+      HYGRO_COLOR,
+      TFT_BLACK,
+      hum,
+      1);
 
     //////////draw toggle buttons ////////////
     //toggleSW(tft.width() / 2+15, LowGraphPos + 15, FanOut, "FAN");
     //toggleSW(tft.width() / 2+15, LowGraphPos + 15+10, lightOut, "LIGHT");
     //toggleSW(tft.width() / 2+15, LowGraphPos + 15+20, secLightOut, "SUNSET");
+    pumpSW.drawTW();
     FanSW.drawTW();
     lightSW.drawTW();
     seclightSW.drawTW();
+    mistSW.drawTW();
+
 
     } //end shit to draw each loop on main page
 
-  if (page == 1) {  //things to refresh every loop on Options screen
+  if (page == 1) {  //things to refresh every loop on clock adjust screen
     if (millis() - lastTimeForRef >= 200 || lastTimeForRef == 0 || last_page != page) {  // low refresh rate of this page
       lastTimeForRef = millis();
       //probably nothing to do at low refresh rate here....
@@ -621,6 +664,9 @@ void loop() {
     tft.drawString(rtc.getDateTime(), tft.width()/2, 15, 4);
     }
 
+  if (page == 2) { //things to refresh every loop on settings screen 
+    
+    }
   // delay(25);
   last_page = page;  // updating the last page, for comparison
 
@@ -634,46 +680,76 @@ void loop() {
     scanTime = millis();
     if (pressed) {  // to check and do when pressed
       lastPress = millis();
+
       if (page == 0) {            // to do when pressed on main page
-        if (t_y < LowGraphPos) {  // touch on the graph
+        if (t_y < LowGraphPos && t_y > LowGraphPos-GraphH) {  // touch on the graph
           // drawGraph();
           drawTags(t_x);
           }
-      
+
         else {  // press outside of the graph
-        if (t_y < FanSW.y + 9 &&
-          t_y > FanSW.y - 9 &&
-          t_x < FanSW.x + 20 &&
-          t_x > FanSW.x - 20) { //fan toggle Switch touched
-          FanOut = !FanOut;
-          }
+          if (t_y < 10 &&
+              t_x < 100 &&
+              t_x > 40) {
+            page = 1; //go to clock setup page
+            }
 
-        if (t_y < lightSW.y + 9 &&
-          t_y > lightSW.y - 9 &&
-          t_x < lightSW.x + 20 &&
-          t_x > lightSW.x - 20) { //fan toggle Switch touched
-          lightOut = !lightOut;
-          }
+          if (t_x < tft.width()-40 &&
+            t_x > tft.width()-100 &&
+            t_y < 10) {
+            page = 2; //go to main setup page
+            }
 
-        if (t_y < seclightSW.y + 9 &&
-          t_y > seclightSW.y - 9 &&
-          t_x < seclightSW.x + 20 &&
-          t_x > seclightSW.x - 20) { //fan toggle Switch touched
-          secLightOut = !secLightOut;
-          }
+          if (t_y < FanSW.y + 9 &&
+            t_y > FanSW.y - 9 &&
+            t_x < FanSW.x + 20 &&
+            t_x > FanSW.x - 20) { //fan toggle Switch touched
+            FanOut = !FanOut;
+            }
 
+          if (t_y < pumpSW.y + 9 &&
+            t_y > pumpSW.y - 9 &&
+            t_x < pumpSW.x + 20 &&
+            t_x > pumpSW.x - 20) { //fan toggle Switch touched
+            pumpOut = !pumpOut;
+            }
+
+
+          if (t_y < lightSW.y + 9 &&
+            t_y > lightSW.y - 9 &&
+            t_x < lightSW.x + 20 &&
+            t_x > lightSW.x - 20) { //fan toggle Switch touched
+            lightOut = !lightOut;
+            }
+
+          if (t_y < seclightSW.y + 9 &&
+            t_y > seclightSW.y - 9 &&
+            t_x < seclightSW.x + 20 &&
+            t_x > seclightSW.x - 20) { //fan toggle Switch touched
+            secLightOut = !secLightOut;
+            }
+
+          if (t_y < mistSW.y + 9 &&
+            t_y > mistSW.y - 9 &&
+            t_x < mistSW.x + 20 &&
+            t_x > mistSW.x - 20) { //fan toggle Switch touched
+            mistOut = !mistOut;
+            }
         
         while (
             tft.getTouch(&t_x, &t_y)) {  // screen is pressed, stop everything
             }
         
-          FanSW.state = FanOut;
-          lightSW.state = lightOut;
-          seclightSW.state = secLightOut;
-          //if (page++ > 0) page = 0;  // go to option screen
+        FanSW.state = FanOut;
+        pumpSW.state = pumpOut;
+        lightSW.state = lightOut;
+        seclightSW.state = secLightOut;
+        mistSW.state = mistOut;
+          
+          
           }
         }
-      if (page == 1) {  // to do on pressed on page options
+      if (page == 1) {  // to do on pressed on clock setup page
 
         if (tft.getTouch(&t_x, &t_y, 250)) {
           if (s1.checkTouch(t_x, t_y)) {
@@ -698,8 +774,16 @@ void loop() {
           while (
             tft.getTouch(&t_x, &t_y)) {  // screen is pressed, stop everything
             }
-          //FanOut = !FanOut;
-          if (page++ > 0) page = 0;  // skip to option screen
+          page = 0;  // return to main screen
+          }
+        }
+      if (page == 2) { //to do on pressed on settings page
+        if (t_x > 50 && t_x < 100 && t_y > 200 &&
+          t_y < 200 + 40) {  // check if the return button is pressed
+          while (
+            tft.getTouch(&t_x, &t_y)) {  // screen is pressed, stop everything
+            }
+          page = 0;  // return to main screen
           }
         }
       }

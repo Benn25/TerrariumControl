@@ -3,7 +3,7 @@
 
 #define LowGraphPos 142  // Y coordinate of the lower part of the graph
 #define GraphH 130       // height of the graph
-#define mettersYpos 200  // Y position of the round metters
+#define mettersYpos 197  // Y position of the round metters
 
 #define MAXBL 255    // max backlight
 #define MINBL 80     // min backlight
