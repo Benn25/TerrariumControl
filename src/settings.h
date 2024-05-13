@@ -1,7 +1,11 @@
 #define Toggle_W 60
 #define Toggle_H 30
+
+//the buttons OK and cancel
 #define but_W 100
 #define but_H 30
+#define but_X 80
+#define but_Y tft.height() - but_H  - 5
 
 #define LowGraphPos 142  // Y coordinate of the lower part of the graph
 #define GraphH 130       // height of the graph
@@ -11,7 +15,7 @@
 #define MINBL 80     // min backlight
 #define max_temp 45  // maximum reachable
 #define FanWorkTime 60 //duration you want the fan to work for
-#define timeLine_Y 100 //Y position of the timeline for settings
+#define timeLine_Y 45 //Y position of the timeline for settings
 
 #define DEG2RAD 0.0174532925
 
