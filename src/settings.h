@@ -11,7 +11,7 @@
 #define MINBL 80     // min backlight
 #define max_temp 45  // maximum reachable
 #define FanWorkTime 60 //duration you want the fan to work for
-#define timeLine_Y 120 //Y position of the timeline for settings
+#define timeLine_Y 100 //Y position of the timeline for settings
 
 #define DEG2RAD 0.0174532925
 
@@ -35,7 +35,30 @@
 #define BACKGROUND_COLOR 0x18a3//0x20E4  //((3 << 11) | (8 << 5) | 3)     //sort of dark grey super dark
 #define TEMP_COLOR 0xF6F4  //((20 << 11) | (40 << 5) | 20)
 #define HYGRO_COLOR 0x7DF8
+#define DARK_GOLD 0xACA4
+#define DARK_RED 0xb000
 
 // char* label[] = {"","Celsius","%","AMP", "VOLT"};            // some custom
 // gauge labels
 char lab[2][10] = { "temp", "hygro" };
+//output labels
+char outLab[5][10] = { "light", "pump","mist","fan","sunset" };
+//labels for ON and OFF
+char butlab[2][10] = { "ON", "OFF" };
+
+//def the colors of the outputs for the timeline
+//the order is light, pump, mist, fan, secLight
+int IOcolors[] = {
+TFT_GOLD,
+TFT_WHITE,
+HYGRO_COLOR,
+TFT_GREEN,
+TFT_RED
+    };
+int IODcolors[] = { //dark colors for the timeline
+    DARK_GOLD,
+    TFT_DARKGREY,
+    TFT_DARKCYAN,
+    TFT_DARKGREEN,
+    DARK_RED
+    };

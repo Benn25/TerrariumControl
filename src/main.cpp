@@ -116,7 +116,8 @@ uint16_t RGB888toRGB565(const char* rgb32_str_) {
   return (rgb32 >> 8 & 0xf800) | (rgb32 >> 5 & 0x07e0) | (rgb32 >> 3 & 0x001f);
   }
 
-int IOstates[288][6] = {}; //settings data, when to light up, when to start the pump etc...
+int IOstates[288][5] = {}; //settings data, when to light up, when to start the pump etc...
+//order, from top in the timeline : light, pump, mist, fan, secLight
 
 int graphLine[320][6] = {};  // building the array that saves the data for the graph
                              // 0:temp, 1:hygro, 2:fan, 3:light, 4: mist, 5: secondary light
@@ -235,90 +236,18 @@ void drawOKandCancel(){ //the OK and cancel buttons
 
   }
 
-void drawSplash(int p) {  // draw the splash coresponding to the page
-  // tft.setTextSize(1);
-  if (p == 0) {  //////////////////////////////// Splash on main page
-    // tft.setTextSize(1);
-    //  tft.drawRoundRect(0, 240-95, 320 - 1, 94, 6, TFT_SILVER);
-    //draw the 2 options buttons (clock and settings)
-    //tft.fillRect(20, 0, 20, 9, TEXT_COLOR);
-    tft.setTextPadding(0);
-    tft.setTextDatum(TL_DATUM);
-    tft.setTextColor(TFT_BLACK,TEXT_COLOR);
-    tft.drawString("clock", 40, 2, 1);
-    tft.setTextDatum(TR_DATUM);
-    tft.setTextColor(TFT_BLACK, TEXT_COLOR);
-    tft.drawString("settings", tft.width()-40, 2, 1);
+void simpleBut(const char* label, int x/*middle X*/, int y/*middle Y*/, int state){ //a simple button, frozen H and W with label on it
+//button size
+  int W = 30;
+  int H = 22;
+  int col;
 
-
-    tft.setTextDatum(BC_DATUM);
-    tft.setTextColor(HYGRO_COLOR);
-    tft.drawString("100%", 307, LowGraphPos - GraphH - 1, 1);
-    tft.setTextColor(TEMP_COLOR);
-    tft.drawString("50C", 12, LowGraphPos - GraphH - 1, 1);
-    tft.setTextColor(TEXT_COLOR);
-    tft.setTextDatum(TL_DATUM);
-    tft.drawString("24h", 1, LowGraphPos + 4, 1);
-    tft.setTextDatum(TR_DATUM);
-    tft.drawString("now", tft.width() - 2, LowGraphPos + 4, 1);
-    tft.drawFastHLine(0, LowGraphPos + 1, 319, TFT_WHITE);
-    }
-
-  if (p == 1) { //////////////////////////////////// Splash on option screen
-    int16_t x, y;                         // x and y can be negative
-    uint16_t w, h;                        // Width and height
-    s1.getBoundingRect(&x, &y, &w, &h);   // Update x,y,w,h with bounding box
-    tft.fillRect(x, y, w, h, TFT_BLACK);  // Draw rectangle outline
-    s2.getBoundingRect(&x, &y, &w, &h);   // Update x,y,w,h with bounding box
-    tft.fillRect(x, y, w, h, TFT_BLACK);  // Draw rectangle outline
-    sy.getBoundingRect(&x, &y, &w, &h);   // Update x,y,w,h with bounding box
-    tft.fillRect(x, y, w, h, TFT_BLACK);  // Draw rectangle outline
-    sm.getBoundingRect(&x, &y, &w, &h);   // Update x,y,w,h with bounding box
-    tft.fillRect(x, y, w, h, TFT_BLACK);  // Draw rectangle outline
-    sd.getBoundingRect(&x, &y, &w, &h);   // Update x,y,w,h with bounding box
-    tft.fillRect(x, y, w, h, TFT_BLACK);  // Draw rectangle outline
-    // tft.fillSmoothRoundRect(tft.width() / 2 - 42, LowGraphPos + 1, 84, 32, 3,
-    // TFT_WHITE, BACKGROUND_COLOR);
-    drawOKandCancel();
-
-    tft.setTextColor(TEXT_COLOR, TFT_BLACK);
-    tft.setTextDatum(CL_DATUM);
-    tft.drawString("hour:", 0, 29 + 22 / 2, 1);
-    tft.drawString("min:", 0, 29 +28 + 22 / 2, 1);
-    tft.drawString("year:", 0, 29 +28*2 + 22 / 2, 1);
-    tft.drawString("month:", 0, 29 +28*3 + 22 / 2, 1);
-    tft.drawString("day:", 0, 29 + 28 * 4 + 22 / 2, 1);
-    
-    s1.setSliderPosition(rtc.getHour() - 1);
-    s2.setSliderPosition(rtc.getMinute()-1);
-    sy.setSliderPosition(rtc.getYear()+1);
-    sm.setSliderPosition(rtc.getMonth() + 1-1);
-    sd.setSliderPosition(rtc.getDay()-1);
-
-    s1.setSliderPosition(rtc.getHour());
-    s2.setSliderPosition(rtc.getMinute());
-    sy.setSliderPosition(rtc.getYear());
-    sm.setSliderPosition(rtc.getMonth()+1);
-    sd.setSliderPosition(rtc.getDay());
-    }
-  
-  if (page == 2) {
-    tft.drawString("---SETTINGS---", tft.width() / 2, 15, 4); //page top text
-    //OK button bien phat
-    drawOKandCancel();
-
-    int16_t x, y;                         // x and y can be negative
-    uint16_t w, h;                        // Width and height
-    s1.getBoundingRect(&x, &y, &w, &h);   // Update x,y,w,h with bounding box
-    tft.fillRect(x, y, w, h, TFT_BLACK);  // Draw rectangle outline
-    s2.getBoundingRect(&x, &y, &w, &h);   // Update x,y,w,h with bounding box
-    tft.fillRect(x, y, w, h, TFT_BLACK);  // Draw rectangle outline
-
-    s1.setSliderPosition(rtc.getHour() - 1);
-    s2.setSliderPosition(rtc.getMinute() - 1);
-    s1.setSliderPosition(rtc.getHour());
-    s2.setSliderPosition(rtc.getMinute()); 
-    }
+  state == 0 ? col = TEXT_COLOR : col = GREY;
+    tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(TFT_DARKGREY);
+  tft.fillSmoothRoundRect(x - W / 2, y - H / 2, W, H, 4, col, BACKGROUND_COLOR);
+  tft.drawString(label, x, y,2);
+  tft.setTextColor(TEXT_COLOR);
   }
 
 void drawGraph() {
@@ -385,6 +314,136 @@ void drawTags(int x) {  // draw the values labels on the graph
   tft.setTextColor(TFT_BLACK, HYGRO_COLOR, true);
   tft.drawFloat(hygTag, 1, tft.width() / 2, LowGraphPos - GraphH, 2 /*font*/);
   tft.setTextDatum(MC_DATUM);
+  }
+
+void drawTimeLine() {
+  tft.fillRect((tft.width() - 288) / 2, timeLine_Y, 288, 5 * 3, TFT_BLACK); //errase the timeline
+  //int barCol;
+  for (int a = 0; a < 288; a++) { //draw the timeline of the day, min by min
+    for (int chan = 0; chan < 5; chan++) {
+      //              IOstates[a][chan] == 1 ? barCol = IOcolors[chan] : barCol = TFT_BLACK;
+      if (IOstates[a][chan] == 1) {
+        //tft.drawFastVLine(a + (tft.width() - 288) / 2, timeLine_Y + chan * 3, 3, barCol);
+        tft.drawRect(a + (tft.width() - 288) / 2, timeLine_Y + chan * 3, 2, 3, IOcolors[chan]);
+        }
+      if (IOstates[a][chan] == 2) {
+        tft.drawPixel(a + (tft.width() - 288) / 2, timeLine_Y + chan * 3 + 1, IODcolors[chan]);
+        }
+      }
+    }
+  }
+
+void drawSplash(int p) {  // draw the splash coresponding to the page
+  // tft.setTextSize(1);
+  if (p == 0) {  //////////////////////////////// Splash on main page
+    // tft.setTextSize(1);
+    //  tft.drawRoundRect(0, 240-95, 320 - 1, 94, 6, TFT_SILVER);
+    //draw the 2 options buttons (clock and settings)
+    //tft.fillRect(20, 0, 20, 9, TEXT_COLOR);
+    tft.setTextPadding(0);
+    tft.setTextDatum(TL_DATUM);
+    tft.setTextColor(TFT_BLACK, TEXT_COLOR);
+    tft.drawString("clock", 40, 2, 1);
+    tft.setTextDatum(TR_DATUM);
+    tft.setTextColor(TFT_BLACK, TEXT_COLOR);
+    tft.drawString("settings", tft.width() - 40, 2, 1);
+
+
+    tft.setTextDatum(BC_DATUM);
+    tft.setTextColor(HYGRO_COLOR);
+    tft.drawString("100%", 307, LowGraphPos - GraphH - 1, 1);
+    tft.setTextColor(TEMP_COLOR);
+    tft.drawString("50C", 12, LowGraphPos - GraphH - 1, 1);
+    tft.setTextColor(TEXT_COLOR);
+    tft.setTextDatum(TL_DATUM);
+    tft.drawString("24h", 1, LowGraphPos + 4, 1);
+    tft.setTextDatum(TR_DATUM);
+    tft.drawString("now", tft.width() - 2, LowGraphPos + 4, 1);
+    tft.drawFastHLine(0, LowGraphPos + 1, 319, TFT_WHITE);
+    }
+
+  if (p == 1) { //////////////////////////////////// Splash on option screen
+    int16_t x, y;                         // x and y can be negative
+    uint16_t w, h;                        // Width and height
+    s1.getBoundingRect(&x, &y, &w, &h);   // Update x,y,w,h with bounding box
+    tft.fillRect(x, y, w, h, TFT_BLACK);  // Draw rectangle outline
+    s2.getBoundingRect(&x, &y, &w, &h);   // Update x,y,w,h with bounding box
+    tft.fillRect(x, y, w, h, TFT_BLACK);  // Draw rectangle outline
+    sy.getBoundingRect(&x, &y, &w, &h);   // Update x,y,w,h with bounding box
+    tft.fillRect(x, y, w, h, TFT_BLACK);  // Draw rectangle outline
+    sm.getBoundingRect(&x, &y, &w, &h);   // Update x,y,w,h with bounding box
+    tft.fillRect(x, y, w, h, TFT_BLACK);  // Draw rectangle outline
+    sd.getBoundingRect(&x, &y, &w, &h);   // Update x,y,w,h with bounding box
+    tft.fillRect(x, y, w, h, TFT_BLACK);  // Draw rectangle outline
+    // tft.fillSmoothRoundRect(tft.width() / 2 - 42, LowGraphPos + 1, 84, 32, 3,
+    // TFT_WHITE, BACKGROUND_COLOR);
+    drawOKandCancel();
+
+    tft.setTextColor(TEXT_COLOR, TFT_BLACK);
+    tft.setTextDatum(CL_DATUM);
+    tft.drawString("hour:", 0, 29 + 22 / 2, 1);
+    tft.drawString("min:", 0, 29 + 28 + 22 / 2, 1);
+    tft.drawString("year:", 0, 29 + 28 * 2 + 22 / 2, 1);
+    tft.drawString("month:", 0, 29 + 28 * 3 + 22 / 2, 1);
+    tft.drawString("day:", 0, 29 + 28 * 4 + 22 / 2, 1);
+
+    s1.setSliderPosition(rtc.getHour() - 1);
+    s2.setSliderPosition(rtc.getMinute() - 1);
+    sy.setSliderPosition(rtc.getYear() + 1);
+    sm.setSliderPosition(rtc.getMonth() + 1 - 1);
+    sd.setSliderPosition(rtc.getDay() - 1);
+
+    s1.setSliderPosition(rtc.getHour());
+    s2.setSliderPosition(rtc.getMinute());
+    sy.setSliderPosition(rtc.getYear());
+    sm.setSliderPosition(rtc.getMonth() + 1);
+    sd.setSliderPosition(rtc.getDay());
+    }
+
+  if (page == 2) {
+    tft.setTextDatum(MC_DATUM);
+    tft.drawString("---= SETTINGS =---", tft.width() / 2, 16, 4); //page top text
+    //OK button bien phat
+    drawOKandCancel();
+
+    tft.setTextColor(TEXT_COLOR, TFT_BLACK);
+    tft.setTextDatum(CL_DATUM);
+    tft.drawString("hour:", 0, 29 + 22 / 2, 1);
+    tft.drawString("min:", 0, 29 + 28 + 22 / 2, 1);
+
+    int16_t x, y;                         // x and y can be negative
+    uint16_t w, h;                        // Width and height
+    s1.getBoundingRect(&x, &y, &w, &h);   // Update x,y,w,h with bounding box
+    tft.fillRect(x, y, w, h, TFT_BLACK);  // Draw rectangle outline
+    s2.getBoundingRect(&x, &y, &w, &h);   // Update x,y,w,h with bounding box
+    tft.fillRect(x, y, w, h, TFT_BLACK);  // Draw rectangle outline
+
+    s1.setSliderPosition(rtc.getHour() - 1);
+    s2.setSliderPosition(rtc.getMinute() - 1);
+    s1.setSliderPosition(rtc.getHour());
+    s2.setSliderPosition(rtc.getMinute());
+
+    tft.setTextColor(TEXT_COLOR);
+    tft.setTextDatum(TC_DATUM);
+
+    for (int hour = 0; hour < 24; hour++) {
+      // Calculate x position of the hour label
+      int x = map(hour * 60, 0, 1440, 0, 288);
+
+      // Draw hour label
+      tft.setTextColor(TEXT_COLOR);
+      tft.setTextSize(1);
+      //      tft.setCursor(x + (tft.width() - 288) / 2, timeLine_Y + 35);
+      if (hour % 3 == 0 && hour != 0) tft.drawNumber(hour, x + (tft.width() - 288) / 2, timeLine_Y + 18, 1);
+      }
+    //draw the labels of the outputs
+    tft.setTextDatum(BC_DATUM);
+    for (int a = 0; a < 5; a++) {
+      tft.drawString(outLab[a], (tft.width() / 5) / 2 + (tft.width() / 5) * a, tft.height() - but_H - 8, 2);
+      }
+    //draw the timeline
+    drawTimeLine();
+    }
   }
 
 class classtoggleSW {
@@ -575,8 +634,27 @@ void setup() {
   /////for debug ////
   //populate with garbage
   for (int i = 0; i < 288; i++) {
-    IOstates[i][0] = (i % 35 == 0);
+
+    if (i < 50 || i > 200) {
+      IOstates[i][0] = 0;
+      }
+    else {
+      IOstates[i][0] = 2;
+      }
+    if (i == 50) {
+      IOstates[i][0] = 1;
+      }
+    if (i == 200) {
+      IOstates[i][0] = 0;
+      }
+    
     IOstates[i][1] = (i % 55 == 0);
+    for (int a = 5; a > 0; a--) {
+      if (i-a % 55 == 0 ) IOstates[i][1] = 2;
+      }
+    IOstates[i][2] = (i % 11 == 0);
+    IOstates[i][3] = (i % 15 == 0);
+    IOstates[i][4] = (i % 120 == 0);
     }
 
   drawSplash(page);  // draw the static shit of the current
@@ -697,41 +775,19 @@ void loop() {
     }
 
   if (page == 2) { //things to refresh every loop on settings screen 
+    if (millis() - lastTimeForRef >= 1500 || lastTimeForRef == 0 || last_page != page) {  // low refresh rate of this page
+      lastTimeForRef = millis();
+
+
+      }
     //draw the sliders for settings hours and min and get the min of the day
     //s1.getSliderPosition();
     //s2.getSliderPosition();
-
-    int minOfDay = s1.getSliderPosition() * 60 + s2.getSliderPosition();
-    int index = (minOfDay) / 5;
-    int tip_X = index + (tft.width() - 288) / 2;
-      
-      tft.fillRect(0, timeLine_Y - 4, tft.width(), 4, BACKGROUND_COLOR);
-      //tft.drawFastVLine(tip_X, timeLine_Y - 10, 10, TFT_WHITE);
-      tft.fillTriangle(tip_X, timeLine_Y - 1, tip_X - 3, timeLine_Y - 1 - 3, tip_X + 3, timeLine_Y - 1 - 3, TFT_WHITE);
-      tft.setTextDatum(BC_DATUM);
-      tft.setTextPadding(tft.width());
-      tft.setTextColor(TEXT_COLOR, BACKGROUND_COLOR);
-      tft.drawString("12:20", tip_X, timeLine_Y - 5, 1);
-      tft.setTextPadding(0);
-      for (int a = 0; a < 288; a++) { //draw the timeline of the day, min by min
-
-      for (int chan = 0; chan < 6; chan++) {
-        if (chan == 0){
-          uint16_t pixcolor = IOstates[a][chan] ? TFT_CYAN : TFT_BLACK;
-          tft.drawFastVLine(a + (tft.width() - 288) / 2, timeLine_Y + chan,3, pixcolor);
-          }
-        if (chan == 1) {
-          uint16_t pixcolor = IOstates[a][chan] ? TFT_GOLD : TFT_BLACK;
-          tft.drawFastVLine(a + (tft.width() - 288) / 2, timeLine_Y + chan*3,3, pixcolor);
-          }
-
-        }
       }
 
-    }
   // delay(25);
+  
   last_page = page;  // updating the last page, for comparison
-
   /////////// touch detection routine ///////////////
 
   static uint32_t scanTime = millis();
@@ -847,7 +903,43 @@ void loop() {
           if (s2.checkTouch(t_x, t_y)) {
             s2.getSliderPosition();
             }
-          }
+
+          int minOfDay = s1.getSliderPosition() * 60 + s2.getSliderPosition();
+          int index = (minOfDay) / 5;
+          //index = (index + 2) / 5 * 5;
+          int tip_X = index + (tft.width() - 288) / 2;
+
+          tft.fillRect(0, timeLine_Y - 15, tft.width(), 15, BACKGROUND_COLOR); //clear the cursor and hour display
+          //tft.drawFastVLine(tip_X, timeLine_Y - 10, 10, TFT_WHITE);
+          tft.fillTriangle(tip_X, timeLine_Y - 2, tip_X - 3, timeLine_Y - 1 - 4, tip_X + 3, timeLine_Y - 1 - 4, TFT_WHITE);
+          tft.setTextDatum(BC_DATUM);
+//          tft.setTextPadding(tft.width());
+          tft.setTextColor(TEXT_COLOR, BACKGROUND_COLOR);
+          tft.setTextPadding(0);
+
+          tft.setTextDatum(BC_DATUM);
+          tft.drawChar(':', tip_X-1, timeLine_Y - 6-8, 1);
+          tft.setTextDatum(BR_DATUM); //datum to bot right
+          tft.drawNumber(s1.getSliderPosition(), tip_X, timeLine_Y - 6, 1);             // Draw hours
+          tft.setTextDatum(BL_DATUM); //datum to bot right
+          if (min((s2.getSliderPosition() + 2) / 5 * 5, 55) < 10) tip_X += tft.drawChar('0', tip_X + 4, timeLine_Y - 6 - 8, 1); // Add minutes leading zero
+          tft.drawNumber(min((s2.getSliderPosition()+2)/5*5,55), tip_X+4, timeLine_Y - 6, 1);             // Draw minutes
+
+          //drawTimeLine();
+
+          int butX = (tft.width() / 5) / 2 + (tft.width() / 5) * 0;
+          int butY = timeLine_Y + 45;
+          int butState;
+          if (t_x > butX - 13 && t_x < butX + 13 && t_y > butY - 10 && t_y < butY + 10) {
+            butState = 1;
+            }
+          else {
+            butState = 0;
+            }
+          simpleBut(butlab[(IOstates[index][0])!=0], butX, butY, butState);
+
+          
+          }// emd of to do when pressed
 
         if (t_x > 50 && t_x < 100 && t_y > 200 &&
           t_y < 200 + 40) {  // check if the return button is pressed
@@ -862,9 +954,9 @@ void loop() {
         }
       }
     }
-    /////////////Updating the LCD brightness/////////////////
+  /////////////Updating the LCD brightness/////////////////
     int BLintens = 500 - (millis() - lastPress) / 10;
     if (BLintens > MAXBL) BLintens = MAXBL;
     if (BLintens < MINBL) BLintens = MINBL;
-    analogWrite(TFT_BL, BLintens);
+    page == 0 ? analogWrite(TFT_BL, BLintens) : analogWrite(TFT_BL, 255); //set BL adaptive on main page only 
     }
