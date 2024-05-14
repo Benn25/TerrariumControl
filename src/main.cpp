@@ -195,6 +195,16 @@ float sineWave(long phase, int upperBound) {
   return int(val);
   }
 
+int remapExponential(int toTimer/*the value to evaluate*/, int upbound/*max value*/) {
+    //this function remaps a linear slider to an exp timer from 10 sec to 3600 (1hour)
+    // Ensure the toTimer is within the range [0, upbound]
+    toTimer = constrain(toTimer, 0, upbound);
+    // Calculate the remapped value
+    float remappedValue = 5 * pow(7200.0 / 5, toTimer / float(upbound));
+    return remappedValue;
+}
+
+
 /////////////// GRAPH FUNCTIONS ////////////////
 
 void metter(int x, int y, int lowBound, int highBound, float value,
@@ -238,14 +248,14 @@ void drawOKandCancel(){ //the OK and cancel buttons
 
 void simpleBut(const char* label, int x/*middle X*/, int y/*middle Y*/, int state){ //a simple button, frozen H and W with label on it
 //button size
-  int W = 30;
-  int H = 22;
+  int W = 58;
+  int H = 30;
   int col;
 
   state == 0 ? col = TEXT_COLOR : col = GREY;
     tft.setTextDatum(MC_DATUM);
   tft.setTextColor(TFT_DARKGREY);
-  tft.fillSmoothRoundRect(x - W / 2, y - H / 2, W, H, 4, col, BACKGROUND_COLOR);
+  tft.fillSmoothRoundRect(x - W / 2, y - H / 2, W, H, 8, col, BACKGROUND_COLOR);
   tft.drawString(label, x, y,2);
   tft.setTextColor(TEXT_COLOR);
   }
@@ -333,6 +343,17 @@ void drawTimeLine() {
     }
   }
 
+void drawSpecTimeLine(int page) { //the timelines for each output settings
+  tft.fillRect((tft.width() - 288) / 2, timeLine_Y, 288, 10, TFT_BLACK); //errase the timeline
+
+  for (int a = 0; a < 288; a++) { //draw the timeline of the day, min by min
+    if (IOstates[a][page]) {
+      //tft.drawFastVLine(a + (tft.width() - 288) / 2, timeLine_Y + chan * 3, 3, barCol);
+      tft.drawRect(a + (tft.width() - 288) / 2, timeLine_Y, 2, 10, IOcolors[page]);
+      }
+    }
+  }
+
 void drawSplash(int p) {  // draw the splash coresponding to the page
   // tft.setTextSize(1);
   if (p == 0) {  //////////////////////////////// Splash on main page
@@ -400,10 +421,10 @@ void drawSplash(int p) {  // draw the splash coresponding to the page
     sd.setSliderPosition(rtc.getDay());
     }
 
-  if (page == 2) {
+  if (page == 2) { //////////////////////////////// Splash settings
     tft.setTextDatum(MC_DATUM);
     tft.setTextColor(TEXT_COLOR, BACKGROUND_COLOR);
-    tft.drawString("---= SETTINGS =---", tft.width() / 2, 16, 4); //page top text
+    tft.drawString("---= SETTINGS =---", tft.width() / 2, 18, 4); //page top text
     //OK button bien phat
     drawOKandCancel();
 
@@ -430,24 +451,25 @@ void drawSplash(int p) {  // draw the splash coresponding to the page
     for (int hour = 0; hour < 24; hour++) {
       // Calculate x position of the hour label
       int x = map(hour * 60, 0, 1440, 0, 288);
-
       // Draw hour label
       tft.setTextColor(TEXT_COLOR);
       tft.setTextSize(1);
       //      tft.setCursor(x + (tft.width() - 288) / 2, timeLine_Y + 35);
-      if (hour % 3 == 0 && hour != 0) tft.drawNumber(hour, x + (tft.width() - 288) / 2, timeLine_Y + 10*6, 1);
+      if (hour % 3 == 0 && hour != 0) tft.drawNumber(hour, x + (tft.width() - 288) / 2, timeLine_Y + 10 * 6, 1);
+      //draw a small line every hours
+      if (hour % 1 == 0 && hour != 0) tft.drawFastVLine(x + (tft.width() - 288) / 2, timeLine_Y + 10 * 6 - 5, 3, TFT_DARKGREY);
       }
     //draw the labels of the outputs
     tft.setTextDatum(MC_DATUM);
     tft.setFreeFont(FF21);
     for (int a = 0; a < 5; a++) {
-      tft.fillSmoothRoundRect(((tft.width() / 5) / 2 + (tft.width() / 5) * a) - 54 / 2,
+      tft.fillSmoothRoundRect(((tft.width() / 5) / 2 + (tft.width() / 5) * a) - 60 / 2,
         (tft.height() - but_H - 50) - 32 / 2,
-        54, 32, 8, TEXT_COLOR, BACKGROUND_COLOR);
+        60, 32, 8, TEXT_COLOR, BACKGROUND_COLOR);
       tft.setTextColor(BACKGROUND_COLOR);
-      tft.drawString(outLab[a], (tft.width() / 5) / 2 + (tft.width() / 5) * a+1, tft.height() - but_H - 50+1, 1);
-      tft.setTextColor(IOcolors[a]);
       tft.drawString(outLab[a], (tft.width() / 5) / 2 + (tft.width() / 5) * a, tft.height() - but_H - 50, 1);
+      tft.setTextColor(IOcolors[a]);
+      tft.drawString(outLab[a], (tft.width() / 5) / 2 + (tft.width() / 5) * a-1, tft.height() - but_H - 50-1, 1);
       }
     tft.setFreeFont();
     // draw a cute frame
@@ -457,13 +479,79 @@ void drawSplash(int p) {  // draw the splash coresponding to the page
     drawTimeLine();
     }
 
-  if (page == 3) {
+  if (page == 3) { //////////////////////////////// Splash LIGHT
     tft.setTextDatum(MC_DATUM);
-    tft.drawString("---= MAIN LIGHT =---", tft.width() / 2, 16, 4); //page top text
+    tft.drawString("---= MAIN LIGHT =---", tft.width() / 2, 18, 4); //page top text
     //OK button bien phat
     drawOKandCancel();
     drawTimeLine();
     }
+  
+  if (page == 4) { //////////////////////////////// Splash Pump
+    tft.setTextDatum(MC_DATUM);
+    tft.drawString("---= PUMP =---", tft.width() / 2, 18, 4); //page top text
+    //OK button bien phat
+    drawOKandCancel();
+    drawSpecTimeLine(1);
+    //draw the hours labels
+    tft.setTextColor(TEXT_COLOR);
+    tft.setTextDatum(TC_DATUM);
+    for (int hour = 0; hour < 24; hour++) {
+      // Calculate x position of the hour label
+      int x = map(hour * 60, 0, 1440, 0, 288);
+      // Draw hour label
+      tft.setTextColor(TEXT_COLOR);
+      tft.setTextSize(1);
+      //      tft.setCursor(x + (tft.width() - 288) / 2, timeLine_Y + 35);
+      if (hour % 3 == 0 && hour != 0) tft.drawNumber(hour, x + (tft.width() - 288) / 2, timeLine_Y + 15, 1);
+      //draw a small line every hours
+      if (hour % 1 == 0 && hour != 0) tft.drawFastVLine(x + (tft.width() - 288) / 2, timeLine_Y + 15 - 5, 3, TFT_DARKGREY);
+      }
+    }
+  if (page == 5) { //////////////////////////////// Splash mist
+    tft.setTextDatum(MC_DATUM);
+    tft.drawString("---= MIST =---", tft.width() / 2, 18, 4); //page top text
+    //OK button bien phat
+    drawOKandCancel();
+    drawSpecTimeLine(2);
+    //draw the hours labels
+    tft.setTextColor(TEXT_COLOR);
+    tft.setTextDatum(TC_DATUM);
+    for (int hour = 0; hour < 24; hour++) {
+      // Calculate x position of the hour label
+      int x = map(hour * 60, 0, 1440, 0, 288);
+      // Draw hour label
+      tft.setTextColor(TEXT_COLOR);
+      tft.setTextSize(1);
+      //      tft.setCursor(x + (tft.width() - 288) / 2, timeLine_Y + 35);
+      if (hour % 3 == 0 && hour != 0) tft.drawNumber(hour, x + (tft.width() - 288) / 2, timeLine_Y + 15, 1);
+      //draw a small line every hours
+      if (hour % 1 == 0 && hour != 0) tft.drawFastVLine(x + (tft.width() - 288) / 2, timeLine_Y + 15 - 5, 3, TFT_DARKGREY);
+      }
+    }
+  if (page == 6) { //////////////////////////////// Splash fan
+    tft.setTextDatum(MC_DATUM);
+    tft.drawString("---= FAN =---", tft.width() / 2, 18, 4); //page top text
+    //OK button bien phat
+    drawOKandCancel();
+    drawSpecTimeLine(3);
+    //draw the hours labels
+    tft.setTextColor(TEXT_COLOR);
+    tft.setTextDatum(TC_DATUM);
+    for (int hour = 0; hour < 24; hour++) {
+      // Calculate x position of the hour label
+      int x = map(hour * 60, 0, 1440, 0, 288);
+      // Draw hour label
+      tft.setTextColor(TEXT_COLOR);
+      tft.setTextSize(1);
+      //      tft.setCursor(x + (tft.width() - 288) / 2, timeLine_Y + 35);
+      if (hour % 3 == 0 && hour != 0) tft.drawNumber(hour, x + (tft.width() - 288) / 2, timeLine_Y + 15, 1);
+      //draw a small line every hours
+      if (hour % 1 == 0 && hour != 0) tft.drawFastVLine(x + (tft.width() - 288) / 2, timeLine_Y + 15 - 5, 3, TFT_DARKGREY);
+      }
+    }
+
+  
   }
 
 class classtoggleSW {
@@ -911,51 +999,23 @@ void loop() {
         }
       if (page == 2) {         //to do on pressed on settings page
         if (tft.getTouch(&t_x, &t_y, 250)) {
-          /*if (s1.checkTouch(t_x, t_y)) {
-            s1.getSliderPosition();
-            }
-          if (s2.checkTouch(t_x, t_y)) {
-            s2.getSliderPosition();
-            }
-          int minOfDay = s1.getSliderPosition() * 60 + s2.getSliderPosition();
-          int index = (minOfDay) / 5;
-          //index = (index + 2) / 5 * 5;
-          int tip_X = index + (tft.width() - 288) / 2;
 
-          tft.fillRect(0, timeLine_Y - 15, tft.width(), 15, BACKGROUND_COLOR); //clear the cursor and hour display
-          //tft.drawFastVLine(tip_X, timeLine_Y - 10, 10, TFT_WHITE);
-          tft.fillTriangle(tip_X, timeLine_Y - 2, tip_X - 3, timeLine_Y - 1 - 4, tip_X + 3, timeLine_Y - 1 - 4, TFT_WHITE);
-          tft.setTextDatum(BC_DATUM);
-//          tft.setTextPadding(tft.width());
-          tft.setTextColor(TEXT_COLOR, BACKGROUND_COLOR);
-          tft.setTextPadding(0);
-
-          tft.setTextDatum(BC_DATUM);
-          tft.drawChar(':', tip_X-1, timeLine_Y - 6-8, 1);
-          tft.setTextDatum(BR_DATUM); //datum to bot right
-          tft.drawNumber(s1.getSliderPosition(), tip_X, timeLine_Y - 6, 1);             // Draw hours
-          tft.setTextDatum(BL_DATUM); //datum to bot right
-          if (min((s2.getSliderPosition() + 2) / 5 * 5, 55) < 10) tip_X += tft.drawChar('0', tip_X + 4, timeLine_Y - 6 - 8, 1); // Add minutes leading zero
-          tft.drawNumber(min((s2.getSliderPosition()+2)/5*5,55), tip_X+4, timeLine_Y - 6, 1);             // Draw minutes
-*/
-
-          //drawTimeLine();
-
-          int butX = (tft.width() / 5) / 2 + (tft.width() / 5) * 0;
-          int butY = timeLine_Y + 45;
+          for(int b = 0 ; b < 5 ; b++){
+          int butX = (tft.width() / 5) / 2 + (tft.width() / 5) * b;
+          int butY = (tft.height() - but_H - 50);
           int butState;
-          if (t_x > butX - 13 && t_x < butX + 13 && t_y > butY - 10 && t_y < butY + 10) {
+          if (t_x > butX - 27 && t_x < butX + 27 && t_y > butY - 16 && t_y < butY + 16) {
             butState = 1;
-          simpleBut("SET", butX, butY, butState);
-          page = 3;
-          while (
-            tft.getTouch(&t_x, &t_y)) {  // screen is pressed, stop everything
-            }
+            simpleBut("SET", butX, butY, butState);
+            page = 3+b;
+            while (
+              tft.getTouch(&t_x, &t_y)) {  // screen is pressed, stop everything
+              }
             }
           else {
             }
             butState = 0;
-
+            }
           }// emd of to do when pressed
         }
       if (page == 3) { // setting for the light
@@ -965,7 +1025,28 @@ void loop() {
         }
       if (page == 4) { // setting for the pump
         if (tft.getTouch(&t_x, &t_y, 250)) { //touch detected
-
+          int timer = t_x;
+          //char unit[2][10] = { "s", "min" };
+          tft.setTextDatum(MC_DATUM);
+          tft.setTextColor(TEXT_COLOR, BACKGROUND_COLOR);
+          String message;
+          timer = remapExponential(timer, tft.width());
+          if ( timer < 60) {
+            //tft.setTextPadding(20);
+            //tft.drawString(unit[0], tft.width() / 2 + 20, tft.height() / 2 + 40, 1);
+            //tft.setTextPadding(20);
+            //tft.drawNumber(timer, tft.width() / 2, tft.height() / 2 + 40, 2);
+            message = timer;
+            tft.setTextPadding(tft.drawString(message + "s", tft.width() / 2, tft.height() / 2 + 40, 4)+10);
+            }
+          else {
+            //tft.setTextPadding(0);
+            //tft.drawString(unit[1], tft.width() / 2 + 20, tft.height() / 2 + 40, 1);
+            //tft.setTextPadding(20);
+            //tft.drawNumber(timer / 60, tft.width() / 2, tft.height() / 2 + 40, 2);
+            message = (timer/60);
+            tft.setTextPadding(tft.drawString(message + "min", tft.width() / 2, tft.height() / 2 + 40, 4) + 10);
+            }
           }
         }
       if (page == 5) { // setting for the mist
