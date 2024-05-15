@@ -2,10 +2,14 @@
 #define Toggle_H 30
 
 //the buttons OK and cancel
-#define but_W 100
-#define but_H 30
-#define but_X 80
-#define but_Y tft.height() - but_H  - 5
+#define but_W 100 //OK but W
+#define but_H 30 //OK but H
+#define but_X 80 //OK but X pos
+#define but_Y tft.height() - but_H  - 5 //OK but Y pos
+
+#define simpleBut_W 58
+#define simpleBut_H 30
+
 
 #define LowGraphPos 142  // Y coordinate of the lower part of the graph
 #define GraphH 130       // height of the graph
@@ -48,7 +52,7 @@ char lab[2][10] = { "temp", "hygro" };
 //output labels
 char outLab[5][10] = { "light", "pump","mist","fan","sunset" };
 //labels for ON and OFF
-char butlab[2][10] = { "ON", "OFF" };
+char butlab[2][10] = { "OFF", "ON" };
 
 //def the colors of the outputs for the timeline
 //the order is light, pump, mist, fan, secLight
@@ -66,3 +70,5 @@ int IODcolors[] = { //dark colors for the timeline
     TFT_DARKGREEN,
     DARK_RED
     };
+
+static int temp_cursor;

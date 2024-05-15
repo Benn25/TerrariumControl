@@ -80,6 +80,7 @@ float dispTemp, dispHum;
 unsigned long lastPress = 0;  // counter for the time since last press for dimming
 int page = 0;       // the page to display, 0 is main screen
 int last_page = 0;  // track the change of page, to redraw everything
+bool nuristate = 1; //state of the buttons for setting the times
 
 #define TFT_BL 32              // LED back-light control pin
 #define TFT_BACKLIGHT_ON HIGH  // Level to turn ON back-light (HIGH or LOW)
@@ -242,20 +243,15 @@ void drawOKandCancel(){ //the OK and cancel buttons
   tft.drawString("Cancel", tft.width() - but_X, tft.height() - 6 - but_H / 2, 1);
 
   tft.setFreeFont();
-
-
   }
 
-void simpleBut(const char* label, int x/*middle X*/, int y/*middle Y*/, int state){ //a simple button, frozen H and W with label on it
-//button size
-  int W = 58;
-  int H = 30;
+void simpleBut(const char* label, int x/*middle X*/, int y/*middle Y*/, int wide, int hei,  int state){ //a simple button, frozen H and W with label on it
   int col;
 
   state == 0 ? col = TEXT_COLOR : col = GREY;
-    tft.setTextDatum(MC_DATUM);
+  tft.setTextDatum(MC_DATUM);
   tft.setTextColor(TFT_DARKGREY);
-  tft.fillSmoothRoundRect(x - W / 2, y - H / 2, W, H, 8, col, BACKGROUND_COLOR);
+  tft.fillSmoothRoundRect(x - wide / 2, y - hei / 2, wide, hei, 8, col, BACKGROUND_COLOR);
   tft.drawString(label, x, y,2);
   tft.setTextColor(TEXT_COLOR);
   }
@@ -492,7 +488,7 @@ void drawSplash(int p) {  // draw the splash coresponding to the page
     tft.drawString("---= PUMP =---", tft.width() / 2, 18, 4); //page top text
     //OK button bien phat
     drawOKandCancel();
-    drawSpecTimeLine(1);
+    drawSpecTimeLine(page-3);
     //draw the hours labels
     tft.setTextColor(TEXT_COLOR);
     tft.setTextDatum(TC_DATUM);
@@ -507,6 +503,15 @@ void drawSplash(int p) {  // draw the splash coresponding to the page
       //draw a small line every hours
       if (hour % 1 == 0 && hour != 0) tft.drawFastVLine(x + (tft.width() - 288) / 2, timeLine_Y + 15 - 5, 3, TFT_DARKGREY);
       }
+    tft.fillRect(3, 185 - 1, tft.width() - 8, 2, TFT_LIGHTGREY);
+    tft.drawFastVLine(25, 185 - 6, 3, TFT_LIGHTGREY);
+    tft.drawFastVLine(tft.width()/2, 185 - 8, 5, TEXT_COLOR);
+    tft.drawFastVLine(tft.width() - 26, 185 - 6, 3, TFT_LIGHTGREY);
+    tft.setTextDatum(BL_DATUM);
+    tft.drawString("5s", 1, 185 - 3, 2);
+    tft.setTextDatum(BR_DATUM);
+    tft.drawString("max", tft.width() - 1, 185 - 3, 2);
+    
     }
   if (page == 5) { //////////////////////////////// Splash mist
     tft.setTextDatum(MC_DATUM);
@@ -904,7 +909,7 @@ void loop() {
   static uint32_t scanTime = millis();
   uint16_t t_x = 9999, t_y = 9999;  // To store the touch coordinates
   // Scan keys every 50ms at most
-  if (millis() - scanTime >= 50) {  // Pressed will be set true if there is a valid touch on the screen
+  if (millis() - scanTime >= 33) {  // Pressed will be set true if there is a valid touch on the screen
     bool pressed = tft.getTouch(&t_x, &t_y);
     scanTime = millis();
     if (pressed) {  // to check and do when pressed
@@ -1006,7 +1011,7 @@ void loop() {
           int butState;
           if (t_x > butX - 27 && t_x < butX + 27 && t_y > butY - 16 && t_y < butY + 16) {
             butState = 1;
-            simpleBut("SET", butX, butY, butState);
+            simpleBut("SET", butX, butY, simpleBut_W, simpleBut_H, butState);
             page = 3+b;
             while (
               tft.getTouch(&t_x, &t_y)) {  // screen is pressed, stop everything
@@ -1025,30 +1030,58 @@ void loop() {
         }
       if (page == 4) { // setting for the pump
         if (tft.getTouch(&t_x, &t_y, 250)) { //touch detected
-          int timer = t_x;
-          //char unit[2][10] = { "s", "min" };
-          tft.setTextDatum(MC_DATUM);
-          tft.setTextColor(TEXT_COLOR, BACKGROUND_COLOR);
-          String message;
-          timer = remapExponential(timer, tft.width());
-          if ( timer < 60) {
-            //tft.setTextPadding(20);
-            //tft.drawString(unit[0], tft.width() / 2 + 20, tft.height() / 2 + 40, 1);
-            //tft.setTextPadding(20);
-            //tft.drawNumber(timer, tft.width() / 2, tft.height() / 2 + 40, 2);
-            message = timer;
-            tft.setTextPadding(tft.drawString(message + "s", tft.width() / 2, tft.height() / 2 + 40, 4)+10);
+          
+          int nuriBut_X = tft.width() / 2 + 30;
+          int nuriBut_Y = tft.height() / 2;
+          int nuribut_Wid = 60;
+          int nuribut_Hei = 40;
+
+          if (t_x > nuriBut_X - nuribut_Wid / 2 && t_x < nuriBut_X + nuribut_Wid / 2 &&
+            t_y > nuriBut_Y - nuribut_Hei / 2 && t_y < nuriBut_Y + nuribut_Hei / 2) {  // check if the return button is pressed
+            nuristate = !nuristate;
+            while (tft.getTouch(&t_x, &t_y)) {  // screen is pressed, stop everything to debounce
+              }
+            simpleBut(butlab[nuristate], nuriBut_X, nuriBut_Y, nuribut_Wid, nuribut_Hei, nuristate);
+            tft.setTextPadding(50);
+            tft.setTextColor(TEXT_COLOR, BACKGROUND_COLOR);
+            tft.drawNumber(nuristate, 20, tft.height() / 2 + 15, 4);
             }
-          else {
-            //tft.setTextPadding(0);
-            //tft.drawString(unit[1], tft.width() / 2 + 20, tft.height() / 2 + 40, 1);
-            //tft.setTextPadding(20);
-            //tft.drawNumber(timer / 60, tft.width() / 2, tft.height() / 2 + 40, 2);
-            message = (timer/60);
-            tft.setTextPadding(tft.drawString(message + "min", tft.width() / 2, tft.height() / 2 + 40, 4) + 10);
+
+          if (t_y > 170 && t_y < 200) {
+            int timer = t_x;
+            tft.setTextDatum(MC_DATUM);
+            tft.setTextColor(TEXT_COLOR, BACKGROUND_COLOR);
+            String message;
+            timer = remapExponential(timer, tft.width());
+            if (timer < 60) {
+              message = timer;
+              tft.setTextPadding(tft.drawString(message + "s", tft.width() / 2, tft.height() / 2 + 40, 4) + 10);
+              }
+            else {
+              message = (timer / 60);
+              tft.setTextPadding(tft.drawString(message + "min", tft.width() / 2, tft.height() / 2 + 40, 4) + 10);
+              }
+            }
+          if (t_y > timeLine_Y && t_y < timeLine_Y+10) { //if touch on the timeline
+
+            if (abs(temp_cursor - (t_x-16)) > 10) temp_cursor = (t_x-16);
+            if (temp_cursor < t_x - 16) {
+              temp_cursor++;
+              }
+            if (temp_cursor > t_x - 16) {
+              temp_cursor--;
+              }
+            temp_cursor = constrain(temp_cursor, 0, 288);
+            IOstates[temp_cursor][page - 3] = nuristate;
+
+            tft.setTextColor(TEXT_COLOR, BACKGROUND_COLOR);
+            tft.setTextDatum(CL_DATUM);
+            tft.setTextPadding(80);
+            tft.drawNumber(temp_cursor, 35, tft.height() / 2 + 10, 4);
+            }
+          drawSpecTimeLine(page - 3);
             }
           }
-        }
       if (page == 5) { // setting for the mist
         if (tft.getTouch(&t_x, &t_y, 250)) { //touch detected
 
@@ -1065,10 +1098,8 @@ void loop() {
           }
         }
       if (page != 0) { //common to page other than the main
-        if (t_x > 50 && t_x < 100 && t_y > 200 &&
-          t_y < 200 + 40) {  // check if the return button is pressed
-          while (
-            tft.getTouch(&t_x, &t_y)) {  // screen is pressed, stop everything
+        if (t_x > 50 && t_x < 100 && t_y > 200 && t_y < 200 + 40) {  // check if the return button is pressed
+          while (tft.getTouch(&t_x, &t_y)) {  // screen is pressed, stop everything
             }
           if (page > 2) {
             page = 2;  // return to Settings screen
@@ -1081,7 +1112,7 @@ void loop() {
       else  // when no touch detected
         {
         }
-      }
+      } //end of to do when pressed
     }
   /////////////Updating the LCD brightness/////////////////
     int BLintens = 500 - (millis() - lastPress) / 10;
