@@ -1,6 +1,3 @@
-#define Toggle_W 60
-#define Toggle_H 30
-
 //the buttons OK and cancel
 #define but_W 100 //OK but W
 #define but_H 30 //OK but H
@@ -9,6 +6,12 @@
 
 #define simpleBut_W 58
 #define simpleBut_H 30
+
+///////buttons on the specific settings pages
+#define nuribut_Wid  60
+#define nuribut_Hei  35
+#define nuriBut_X  tft.width()-10-5*2-nuribut_Wid*3/2//tft.width() / 2+40
+#define nuriBut_Y  tft.height() / 2+12
 
 
 #define LowGraphPos 142  // Y coordinate of the lower part of the graph
