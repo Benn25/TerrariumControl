@@ -54,6 +54,12 @@
 char lab[2][10] = { "temp", "hygro" };
 //output labels
 char outLab[5][10] = { "light", "pump","mist","fan","sunset" };
+char outTitleLab[5][22] = {
+"---= MAIN LIGHT =---",
+"---= PUMP =---",
+"---= MIST =---",
+"---= FAN =---",
+"---= SUNSET =---" };
 //labels for ON and OFF
 char butlab[2][10] = { "OFF", "ON" };
 
@@ -75,3 +81,11 @@ int IODcolors[] = { //dark colors for the timeline
     };
 
 static int temp_cursor;
+
+float Maxdurations[5] = { //max duration for each parameters, in h
+    25/*main light, full day max*/,
+    4/*pump*/,
+    2/*mist*/,
+    1/*fan*/,
+    1/*unset*/
+    };

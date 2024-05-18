@@ -94,8 +94,9 @@ int touchX[numSamples];
 int touchY[numSamples];
 int currentIndex = 0;
 bool touchDetected[numSamples];
-int avgX;
+int avgX = 100;
 int avgY;
+int timer = 60; //the timer for the timespan
 
 #define TFT_BL 32              // LED back-light control pin
 #define TFT_BACKLIGHT_ON HIGH  // Level to turn ON back-light (HIGH or LOW)
@@ -137,7 +138,7 @@ int IOstates[288][5] = {}; //settings data, when to light up, when to start the 
 //order, from top in the timeline : light, pump, mist, fan, secLight
 
 int graphLine[320][6] = {};  // building the array that saves the data for the graph
-                             // 0:temp, 1:hygro, 2:fan, 3:light, 4: mist, 5: secondary light
+// 0:temp, 1:hygro, 2:fan, 3:light, 4: mist, 5: secondary light
 
 void touch_calibrate() {
 
@@ -202,9 +203,9 @@ void touch_calibrate() {
     }
   }
 float sineWave(long phase, int upperBound) {
-// ################################################################################################################################
-// Return a value in range -1 to +1 for a given phase angle in degrees
-// ################################################################################################################################
+  // ################################################################################################################################
+  // Return a value in range -1 to +1 for a given phase angle in degrees
+  // ################################################################################################################################
   float val = sin(phase * DEG2RAD);
   val += 1;
   val *= upperBound / 2;
@@ -212,18 +213,18 @@ float sineWave(long phase, int upperBound) {
   return int(val);
   }
 
-int remapExponential(int toTimer/*the value to evaluate*/, int upbound/*max value*/) {
-    //this function remaps a linear slider to an exp timer from 10 sec to 3600 (1hour)
-    // Ensure the toTimer is within the range [0, upbound]
-    toTimer = constrain(toTimer, 0, upbound);
-    // Calculate the remapped value
-    float remappedValue = 5 * pow(7200.0 / 5, toTimer / float(upbound));
-    return remappedValue;
-}
+int remapExponential(int toTimer/*the value to evaluate*/, int upbound/*max value*/, float upTime) {
+  //this function remaps a linear slider to an exp timer from 5 sec to upTime (in sec)
+  // Ensure the toTimer is within the range [0, upbound]
+  toTimer = constrain(toTimer, 0, upbound);
+  // Calculate the remapped value
+  float remappedValue = 5 * pow(upTime / 5, toTimer / float(upbound));
+  return remappedValue;
+  }
 
 void clearTL(int timeLineID, int Val) {
   for (int a = 0; a < 288; a++) {
-    IOstates[a][timeLineID]=Val;
+    IOstates[a][timeLineID] = Val;
     }
   }
 
@@ -249,16 +250,17 @@ void metter(int x, int y, int lowBound, int highBound, float value,
   tft.drawArc(x, y, 45, 45 - 3, endAngle, 360 - 50, emptyColour, BACKGROUND_COLOR, true);
   }
 
-void drawOKandCancel(){ //the OK and cancel buttons
+void drawOKandCancel() { //the OK and cancel buttons
   //OK button bien phat
   //tft.setFreeFont(FMB12);
   tft.setFreeFont(FSSB12);
   tft.setTextDatum(MC_DATUM);
   tft.fillSmoothRoundRect(but_X - but_W / 2, but_Y, but_W, but_H, but_H / 2, TEXT_COLOR, BACKGROUND_COLOR);
   tft.setTextColor(TFT_BLACK, TEXT_COLOR);
-  tft.drawString("OK", but_X, tft.height() - 6 -but_H/2, 1);
+  tft.setTextPadding(0);
+  tft.drawString("OK", but_X, tft.height() - 6 - but_H / 2, 1);
 
-  
+
   tft.fillSmoothRoundRect(tft.width() - but_X - but_W / 2, tft.height() - but_H - 5, but_W, but_H, but_H / 2, TEXT_COLOR, BACKGROUND_COLOR);
   tft.setTextColor(TFT_BLACK, TEXT_COLOR);
   tft.drawString("Cancel", tft.width() - but_X, tft.height() - 6 - but_H / 2, 1);
@@ -266,7 +268,7 @@ void drawOKandCancel(){ //the OK and cancel buttons
   tft.setFreeFont();
   }
 
-void simpleBut(const char* label, int x/*middle X*/, int y/*middle Y*/, int wide, int hei,  int state){ //a simple button, frozen H and W with label on it
+void simpleBut(const char* label, int x/*middle X*/, int y/*middle Y*/, int wide, int hei, int state) { //a simple button, frozen H and W with label on it
   int col;
 
   wide > 50 ? tft.setFreeFont(FMB9) : tft.setFreeFont(); // FSSB9, FMB12
@@ -275,7 +277,7 @@ void simpleBut(const char* label, int x/*middle X*/, int y/*middle Y*/, int wide
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(TEXT_COLOR);
   tft.drawString(label, x, y, 1);
-  if(wide >= 50) tft.setFreeFont(); //reset the font if needed
+  if (wide >= 50) tft.setFreeFont(); //reset the font if needed
   }
 
 void drawGraph() {
@@ -315,18 +317,52 @@ void drawGraph() {
 void drawDateBloc() { //draw the date and time of the main page
   tft.setTextDatum(TC_DATUM);
   tft.fillSmoothRoundRect(
-    tft.width() / 2 - (tft.drawString(rtc.getTime("%a, %b %d %H:%M"), tft.width() / 2, LowGraphPos + 2+1-5, 1)+6) / 2, /*X pos*/
-    LowGraphPos + 2-1-5, /*Y pos*/
-    tft.drawString(rtc.getTime("%a, %b %d %H:%M"), tft.width() / 2, LowGraphPos + 2+1-5, 1)+6,/*W*/
+    tft.width() / 2 - (tft.drawString(rtc.getTime("%a, %b %d %H:%M"), tft.width() / 2, LowGraphPos + 2 + 1 - 5, 1) + 6) / 2, /*X pos*/
+    LowGraphPos + 2 - 1 - 5, /*Y pos*/
+    tft.drawString(rtc.getTime("%a, %b %d %H:%M"), tft.width() / 2, LowGraphPos + 2 + 1 - 5, 1) + 6,/*W*/
     10, /*H*/
     3,/*rad*/
     TEXT_COLOR,
     BACKGROUND_COLOR);
   tft.setTextColor(TFT_BLACK);
   // tft.setFreeFont(TT1);
-  tft.drawString(rtc.getTime("%a, %b %d %H:%M"), tft.width() / 2, LowGraphPos + 2+1-5, 1);
+  tft.drawString(rtc.getTime("%a, %b %d %H:%M"), tft.width() / 2, LowGraphPos + 2 + 1 - 5, 1);
   //tft.setTextDatum(TC_DATUM);
   //tft.drawString(rtc.getTime("%H:%M"), tft.width() / 2, LowGraphPos+15, 2);
+  }
+
+void drawTimeAsString(int val) {
+  tft.fillRect(0, timeLine_Y + 10 + 11, tft.width(), 20, BACKGROUND_COLOR);//errase cursors
+  tft.fillTriangle(val, timeLine_Y + 10 + 11, val - 3, timeLine_Y + 10 + 11 + 3, val + 3, timeLine_Y + 10 + 11 + 3, TEXT_COLOR); //draw cursor
+  // Convert cursor to hour and minute
+  int hour = ((val - 16) * 5) / 60;
+  int minute = ((val - 16) * 5) % 60;
+  // Format the hour and minute as a string
+  char timeString[6];
+  sprintf(timeString, "%02d:%02d", hour, minute);
+  tft.setTextDatum(TC_DATUM);
+  tft.setTextColor(TEXT_COLOR, BACKGROUND_COLOR);
+  tft.drawString(timeString, val, timeLine_Y + 10 + 11 + 10, 1); //draw the selected hour as string
+  }
+
+void drawDuration(int Tim){
+  timer = Tim;
+  timer = remapExponential(timer, tft.width(), 3600.0*Maxdurations[page-3] );
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(TEXT_COLOR, BACKGROUND_COLOR);
+  String message;
+  if (timer < 60) {
+    message = timer;
+    tft.setTextPadding(tft.drawString(message + "s", 86, nuriBut_Y + 9, 4) + 10);
+    }
+  else if (timer >= 60 && timer < 3600*4) {
+    message = (timer / 60);
+    tft.setTextPadding(tft.drawString(message + "min", 86, nuriBut_Y + 9, 4) + 10);
+    }
+  else {
+    message = (timer / 3600);
+    tft.setTextPadding(tft.drawString(message + "h", 86, nuriBut_Y + 9, 4) + 10);
+    }  
   }
 
 void drawTags(int x) {  // draw the values labels on the graph
@@ -347,22 +383,35 @@ void drawTags(int x) {  // draw the values labels on the graph
 void drawTimeLine() {
   tft.fillRect((tft.width() - 288) / 2, timeLine_Y, 288, 5 * 11, TFT_BLACK); //errase the timeline
   //int barCol;
+
+  for (int hour = 0; hour < 24; hour++) {
+    // Calculate x position of the hour label
+    int x = map(hour * 60, 0, 1439, 0, 287);
+    //draw a small line every hours
+    if (hour % 1 == 0 && hour != 0) tft.drawFastVLine(x + (tft.width() - 288) / 2, timeLine_Y, 55, BACKGROUND_COLOR);
+    }
+  
   for (int a = 0; a < 288; a++) { //draw the timeline of the day, min by min
     for (int chan = 0; chan < 5; chan++) {
       //              IOstates[a][chan] == 1 ? barCol = IOcolors[chan] : barCol = TFT_BLACK;
-      if (IOstates[a][chan] == 1) {
+      if (IOstates[a][chan]) {
         //tft.drawFastVLine(a + (tft.width() - 288) / 2, timeLine_Y + chan * 3, 3, barCol);
+        tft.drawRect(a + (tft.width() - 288) / 2, timeLine_Y + chan * 11 + 2, IOstates[a][chan]/60/5, 2, IODcolors[chan]);
         tft.drawRect(a + (tft.width() - 288) / 2, timeLine_Y + chan * 11, 2, 6, IOcolors[chan]);
         }
+
+
+      /*
       if (IOstates[a][chan] == 2) {
         tft.drawPixel(a + (tft.width() - 288) / 2, timeLine_Y + chan * 11 + 1, IODcolors[chan]);
         }
+*/
       }
     }
   }
 
 void drawSpecTimeLine(int page) { //the timelines for each output settings
-  tft.fillRect((tft.width() - 288) / 2, timeLine_Y+10, 289, 10, TFT_BLACK); //errase the timeline
+  tft.fillRect((tft.width() - 288) / 2, timeLine_Y + 10, 289, 10, TFT_BLACK); //errase the timeline
 
   for (int a = 0; a < 288; a++) { //draw the timeline of the day, min by min
     if (IOstates[a][page]) {
@@ -470,7 +519,7 @@ void drawSplash(int p) {  // draw the splash coresponding to the page
       tft.setTextColor(BACKGROUND_COLOR);
       tft.drawString(outLab[a], (tft.width() / 5) / 2 + (tft.width() / 5) * a, tft.height() - but_H - 50, 1);
       tft.setTextColor(IOcolors[a]);
-      tft.drawString(outLab[a], (tft.width() / 5) / 2 + (tft.width() / 5) * a-1, tft.height() - but_H - 50-1, 1);
+      tft.drawString(outLab[a], (tft.width() / 5) / 2 + (tft.width() / 5) * a - 1, tft.height() - but_H - 50 - 1, 1);
       }
     tft.setFreeFont();
     // draw a cute frame
@@ -479,21 +528,13 @@ void drawSplash(int p) {  // draw the splash coresponding to the page
     //draw the timeline
     drawTimeLine();
     }
-
-  if (page == 3) { //////////////////////////////// Splash LIGHT
-    tft.setTextDatum(MC_DATUM);
-    tft.drawString("---= MAIN LIGHT =---", tft.width() / 2, 18, 4); //page top text
-    //OK button bien phat
-    drawOKandCancel();
-    drawTimeLine();
-    }
   
-  if (page == 4) { //////////////////////////////// Splash Pump
+  if (page > 2) { //////////////////////////////// Splash for spec settings
     tft.setTextDatum(MC_DATUM);
-    tft.drawString("---= PUMP =---", tft.width() / 2, 18, 4); //page top text
+    tft.drawString(outTitleLab[page-3], tft.width() / 2, 18, 4); //page top text
     //OK button bien phat
     drawOKandCancel();
-    drawSpecTimeLine(page-3);
+    drawSpecTimeLine(page - 3);
     //draw the hours labels
     tft.setTextColor(TEXT_COLOR);
     tft.setTextDatum(BC_DATUM);
@@ -504,9 +545,9 @@ void drawSplash(int p) {  // draw the splash coresponding to the page
       tft.setTextColor(TEXT_COLOR);
       tft.setTextSize(1);
       //      tft.setCursor(x + (tft.width() - 288) / 2, timeLine_Y + 35);
-      if (hour % 3 == 0 && hour != 0) tft.drawNumber(hour, x + (tft.width() - 288) / 2, timeLine_Y -5+10, 1);
+      if (hour % 3 == 0 && hour != 0) tft.drawNumber(hour, x + (tft.width() - 288) / 2+2, timeLine_Y - 5 + 10, 1);
       //draw a small line every hours
-      if (hour % 1 == 0 && hour != 0) tft.drawFastVLine(x + (tft.width() - 288) / 2, timeLine_Y - 3+10 , 3, TFT_DARKGREY);
+      if (hour % 1 == 0 && hour != 0) tft.drawFastVLine(x + (tft.width() - 288) / 2+1, timeLine_Y - 3 + 10, 3, TFT_DARKGREY);
       }
     tft.setTextDatum(BC_DATUM);
     tft.setTextColor(TFT_DARKGREY);
@@ -514,7 +555,7 @@ void drawSplash(int p) {  // draw the splash coresponding to the page
     tft.setTextColor(TEXT_COLOR);
     tft.fillRect(3, 182 - 1, tft.width() - 8, 2, TFT_LIGHTGREY);
     tft.drawFastVLine(25, 182 - 6, 3, TFT_LIGHTGREY);
-    tft.drawFastVLine(tft.width()/2, 182 - 8, 5, TEXT_COLOR);
+    tft.drawFastVLine(tft.width() / 2, 182 - 8, 5, TEXT_COLOR);
     tft.drawFastVLine(tft.width() - 26, 182 - 6, 3, TFT_LIGHTGREY);
     tft.setTextDatum(BL_DATUM);
     tft.drawString("5s", 1, 182 - 3, 2);
@@ -522,65 +563,30 @@ void drawSplash(int p) {  // draw the splash coresponding to the page
     tft.drawString("max", tft.width() - 1, 182 - 3, 2);
 
     for (int b = 0; b < 2; b++) {
-      if (b == 0) simpleBut(butlab[nuristate], nuriBut_X + b * nuribut_Wid + b * 5, nuriBut_Y, nuribut_Wid, nuribut_Hei, nuristate);
+      if (b == 0) simpleBut("SET", nuriBut_X + b * nuribut_Wid + b * 5, nuriBut_Y, nuribut_Wid, nuribut_Hei, nuristate);
       if (b == 1) {
-        simpleBut("Fill!", nuriBut_X + b * nuribut_Wid + b * 5, nuriBut_Y, nuribut_Wid, nuribut_Hei, 0);
-        tft.drawSmoothRoundRect(9, nuriBut_Y - nuribut_Hei / 2-4, 12, 12, tft.width()-20, nuribut_Hei+8, TFT_MIDGREY, BACKGROUND_COLOR);
-        tft.setTextDatum(TL_DATUM);
-        tft.setTextColor(TFT_MIDGREY);
-        tft.drawString("Timespan", 18, nuriBut_Y - nuribut_Hei / 2 + 1, 1);
-        //tft.drawFastHLine(nuriBut_X - b * nuribut_Wid - b * 5 - nuribut_Wid / 2, nuriBut_Y - nuribut_Hei / 2 + 12, nuribut_Wid, TFT_MIDGREY);
-        }     
+        simpleBut("Fill!", nuriBut_X + b * nuribut_Wid + b * 5, nuriBut_Y, nuribut_Wid, nuribut_Hei, nuristate);
+        }
       }
 
-    simpleBut("<", nuriBut_X, nuriBut_Y-35, nuribut_Wid, nuribut_Hei/2, 1);
-    simpleBut(">", nuriBut_X + nuribut_Wid + 5, nuriBut_Y-35, nuribut_Wid, nuribut_Hei/2, 1);
+    drawTimeAsString(avgX);
+    int defaultDuration = 150; //the default timer for settings, roughly 5min
+    drawDuration(defaultDuration); //start with default values
+
+    //draw a few kazari
+    tft.drawSmoothRoundRect(9, nuriBut_Y - nuribut_Hei / 2 - 4, 12, 12, tft.width() - 20, nuribut_Hei + 8, TFT_MIDGREY, BACKGROUND_COLOR);
+    tft.setTextDatum(TL_DATUM);
+    tft.setTextColor(TFT_MIDGREY);
+    tft.drawString("ON duration", 18, nuriBut_Y - nuribut_Hei / 2 + 1, 1);
+    //tft.drawFastHLine(nuriBut_X - b * nuribut_Wid - b * 5 - nuribut_Wid / 2, nuriBut_Y - nuribut_Hei / 2 + 12, nuribut_Wid, TFT_MIDGREY);
+
+    //draw the mode button (add or keshi)
+    simpleBut(butlab[nuristate], tft.width() / 2, nuriBut_Y, nuriBut_X - tft.width() / 2 - 5 * 4, nuribut_Hei, nuristate);
+
+    simpleBut("<", nuriBut_X, nuriBut_Y - 35, nuribut_Wid, nuribut_Hei / 2, 1);
+    simpleBut(">", nuriBut_X + nuribut_Wid + 5, nuriBut_Y - 35, nuribut_Wid, nuribut_Hei / 2, 1);
 
     }
-  if (page == 5) { //////////////////////////////// Splash mist
-    tft.setTextDatum(MC_DATUM);
-    tft.drawString("---= MIST =---", tft.width() / 2, 18, 4); //page top text
-    //OK button bien phat
-    drawOKandCancel();
-    drawSpecTimeLine(2);
-    //draw the hours labels
-    tft.setTextColor(TEXT_COLOR);
-    tft.setTextDatum(TC_DATUM);
-    for (int hour = 0; hour < 24; hour++) {
-      // Calculate x position of the hour label
-      int x = map(hour * 60, 0, 1439, 0, 287);
-      // Draw hour label
-      tft.setTextColor(TEXT_COLOR);
-      tft.setTextSize(1);
-      //      tft.setCursor(x + (tft.width() - 288) / 2, timeLine_Y + 35);
-      if (hour % 3 == 0 && hour != 0) tft.drawNumber(hour, x + (tft.width() - 288) / 2, timeLine_Y + 15, 1);
-      //draw a small line every hours
-      if (hour % 1 == 0 && hour != 0) tft.drawFastVLine(x + (tft.width() - 288) / 2, timeLine_Y + 15 - 5, 3, TFT_DARKGREY);
-      }
-    }
-  if (page == 6) { //////////////////////////////// Splash fan
-    tft.setTextDatum(MC_DATUM);
-    tft.drawString("---= FAN =---", tft.width() / 2, 18, 4); //page top text
-    //OK button bien phat
-    drawOKandCancel();
-    drawSpecTimeLine(3);
-    //draw the hours labels
-    tft.setTextColor(TEXT_COLOR);
-    tft.setTextDatum(TC_DATUM);
-    for (int hour = 0; hour < 24; hour++) {
-      // Calculate x position of the hour label
-      int x = map(hour * 60, 0, 1439, 0, 287);
-      // Draw hour label
-      tft.setTextColor(TEXT_COLOR);
-      tft.setTextSize(1);
-      //      tft.setCursor(x + (tft.width() - 288) / 2, timeLine_Y + 35);
-      if (hour % 3 == 0 && hour != 0) tft.drawNumber(hour, x + (tft.width() - 288) / 2, timeLine_Y + 15, 1);
-      //draw a small line every hours
-      if (hour % 1 == 0 && hour != 0) tft.drawFastVLine(x + (tft.width() - 288) / 2, timeLine_Y + 15 - 5, 3, TFT_DARKGREY);
-      }
-    }
-
-  
   }
 
 class classtoggleSW {
@@ -595,9 +601,9 @@ public:
     static bool oldState = state;
     static int augment = 2; //size to add to the contener to be bigger that the dot
     static int rad = 7; //size of the round in px
-    static int interSpace = rad / 2+1;
+    static int interSpace = rad / 2 + 1;
     static int wide = 4 * rad + interSpace + augment * 2; //wideness L to R(max)
-    
+
     static int R = 31;
     static int G = 20;
     static int B = 23;
@@ -641,7 +647,7 @@ void toggleSW(int x, int y, bool state, const char* label) {
   static bool oldState = state;
   static int augment = 2; //size to add to the contener to be bigger that the dot
   static int rad = 9; //size of the round in px
-  static int interSpace = rad/3;
+  static int interSpace = rad / 3;
   static int wide = 4 * rad + interSpace + augment * 2; //wideness L to R(max)
   static int disp;
   static int R = 31;
@@ -664,16 +670,16 @@ void toggleSW(int x, int y, bool state, const char* label) {
     tft.setTextDatum(CR_DATUM);
     tft.setTextColor(TFT_BLACK);
     tft.fillSmoothRoundRect(x - wide / 2 - tft.drawString(label, x - rad * 2 - interSpace / 2 - 5, y + 1, 1) - 7, y - rad - 2 + 4, wide + 1 + tft.drawString(label, 10, 10, 1), rad * 2 + augment * 2 + 1 - 8, rad + augment, TFT_SILVER, BACKGROUND_COLOR);
-    tft.drawString(label, x - rad*2 -interSpace/2-5, y + 1, 1);
+    tft.drawString(label, x - rad * 2 - interSpace / 2 - 5, y + 1, 1);
     //Serial.println(disp);
     tft.setTextColor(TEXT_COLOR);
     //tft.setFreeFont(TT1);
     tft.setTextSize(1);
     tft.fillSmoothRoundRect(x - wide / 2, y - rad - 2, wide + 1, rad * 2 + augment * 2 + 1, rad + augment, ((map(disp, 1, 11, 8, 28) << 11) | (G << 5) | map(disp, 11, 1, 8, B)), BACKGROUND_COLOR);
     tft.setTextDatum(CR_DATUM);
-    if (disp > 8) tft.drawString("OFF", x+2, y + 1, 1);
+    if (disp > 8) tft.drawString("OFF", x + 2, y + 1, 1);
     tft.setTextDatum(CL_DATUM);
-    if (disp < 3) tft.drawString("ON", x+3, y+1, 1);
+    if (disp < 3) tft.drawString("ON", x + 3, y + 1, 1);
     tft.fillSmoothCircle(x - rad - interSpace / 2 + map(disp, 1, 11, 0, 2 * rad + interSpace), y, rad, TEXT_COLOR, ((map(disp, 1, 11, 8, 28) << 11) | (G << 5) | map(disp, 11, 1, 8, B) << 5));
     tft.setFreeFont(GLCD);
     tft.setTextSize(1);
@@ -694,27 +700,27 @@ void setup() {
   analogWrite(TFT_BL, 255);
 
   int ToggleSW_X = tft.width() / 2 + 20;
-  
-  FanSW.x = ToggleSW_X+28;
-  FanSW.y = LowGraphPos + 24 + 21*3;
+
+  FanSW.x = ToggleSW_X + 28;
+  FanSW.y = LowGraphPos + 24 + 21 * 3;
   FanSW.state = FanOut;
   FanSW.label = "Fan";
   FanSW.disp = 0;
 
   pumpSW.x = ToggleSW_X - 40;
-  pumpSW.y = LowGraphPos + 24 +21 *3 ;
+  pumpSW.y = LowGraphPos + 24 + 21 * 3;
   pumpSW.state = pumpOut;
   pumpSW.label = "Pump";
   pumpSW.disp = 0;
 
   lightSW.x = ToggleSW_X;
-  lightSW.y = LowGraphPos + 24 + 21*1;
+  lightSW.y = LowGraphPos + 24 + 21 * 1;
   lightSW.state = lightOut;
   lightSW.label = "Light";
   lightSW.disp = 0;
-  
+
   seclightSW.x = ToggleSW_X;
-  seclightSW.y = LowGraphPos + 24 + 21*2;
+  seclightSW.y = LowGraphPos + 24 + 21 * 2;
   seclightSW.state = secLightOut;
   seclightSW.label = "Sunset";
   seclightSW.disp = 0;
@@ -725,7 +731,7 @@ void setup() {
   mistSW.label = "Mist";
   mistSW.disp = 0;
 
-  
+
   rtc.setTime(00, 10, 22, 6, 5, 2024);  // 17th Jan 2021 15:24:30
 
   Serial.println("starting TFT display");
@@ -740,7 +746,7 @@ void setup() {
     touchY[i] = 0;
     touchDetected[i] = false;
     }
-  
+
   // mySensor.setHumOffset(10);
   mySensor.setTempOffset(-6.0);
 
@@ -764,12 +770,12 @@ void setup() {
   sm.createKnob(9, 22, 4, TEXT_COLOR, TFT_DARKGREY);
   sm.setSliderScale(1, 12, 2000);
 
-  sd.createSlider(4, 319-30, BACKGROUND_COLOR, BACKGROUND_COLOR, H_SLIDER);
+  sd.createSlider(4, 319 - 30, BACKGROUND_COLOR, BACKGROUND_COLOR, H_SLIDER);
   sd.createKnob(9, 22, 4, TEXT_COLOR, TFT_DARKGREY);
   sd.setSliderScale(1, 31, 2000);
 
   s1.drawSlider(30, 28);
-  s2.drawSlider(30, 28+28);
+  s2.drawSlider(30, 28 + 28);
   sy.drawSlider(30, 28 + 28 * 2);
   sm.drawSlider(30, 28 + 28 * 3);
   sd.drawSlider(30, 28 + 28 * 4);
@@ -790,10 +796,10 @@ void setup() {
     if (i == 200) {
       IOstates[i][0] = 0;
       }
-    
+
     IOstates[i][1] = (i % 55 == 0);
     for (int a = 5; a > 0; a--) {
-      if (i-a % 55 == 0 ) IOstates[i][1] = 2;
+      if (i - a % 55 == 0) IOstates[i][1] = 2;
       }
     IOstates[i][2] = (i % 11 == 0);
     IOstates[i][3] = (i % 15 == 0);
@@ -926,13 +932,13 @@ void loop() {
     //draw the sliders for settings hours and min and get the min of the day
     //s1.getSliderPosition();
     //s2.getSliderPosition();
-      }
+    }
 
   if (page == 3) { //things to refresh every loop on corresponding setting page
-    
+
     }
   // delay(25);
-  
+
   last_page = page;  // updating the last page, for comparison
   /////////// touch detection routine ///////////////
 
@@ -1035,64 +1041,53 @@ void loop() {
       if (page == 2) {         //to do on pressed on settings page
         if (tft.getTouch(&t_x, &t_y, 250)) {
 
-          for(int b = 0 ; b < 5 ; b++){
-          int butX = (tft.width() / 5) / 2 + (tft.width() / 5) * b;
-          int butY = (tft.height() - but_H - 50);
-          int butState;
-          if (t_x > butX - 27 && t_x < butX + 27 && t_y > butY - 16 && t_y < butY + 16) {
-            butState = 1;
-            simpleBut("SET", butX, butY, simpleBut_W, simpleBut_H, butState);
-            page = 3+b;
-            while (
-              tft.getTouch(&t_x, &t_y)) {  // screen is pressed, stop everything
+          for (int b = 0; b < 5; b++) {
+            int butX = (tft.width() / 5) / 2 + (tft.width() / 5) * b;
+            int butY = (tft.height() - but_H - 50);
+            int butState;
+            if (t_x > butX - 27 && t_x < butX + 27 && t_y > butY - 16 && t_y < butY + 16) {
+              butState = 1;
+              simpleBut("SET", butX, butY, simpleBut_W, simpleBut_H, butState);
+              page = 3 + b;
+              while (
+                tft.getTouch(&t_x, &t_y)) {  // screen is pressed, stop everything
+                }
               }
-            }
-          else {
-            }
+            else {
+              }
             butState = 0;
             }
           }// emd of to do when pressed
         }
-      if (page == 3) { // setting for the light
+      if (page > 2) { // setting for the pump
         if (tft.getTouch(&t_x, &t_y, 250)) { //touch detected
           
-          }
-        }
-      if (page == 4) { // setting for the pump
-        if (tft.getTouch(&t_x, &t_y, 250)) { //touch detected
+          if (t_x > nuriBut_X - nuribut_Wid / 2 + nuribut_Wid + 5 && t_x < nuriBut_X + nuribut_Wid / 2 + nuribut_Wid + 5 &&
+            t_y > nuriBut_Y - nuribut_Hei / 2 && t_y < nuriBut_Y + nuribut_Hei / 2) {  // check if the fill button is pressed
+            clearTL(page - 3, nuristate);//fill all timeline
+            while (tft.getTouch(&t_x, &t_y)) {  // screen is pressed, stop everything to debounce
+              }
+            }
 
-for (int b = 0 ; b < 2 ; b++){
-  if (t_x > nuriBut_X - nuribut_Wid / 2 + b * nuribut_Wid + b*5 && t_x < nuriBut_X + nuribut_Wid / 2 + b * nuribut_Wid + b*5 &&
-            t_y > nuriBut_Y - nuribut_Hei / 2 && t_y < nuriBut_Y + nuribut_Hei / 2) {  // check if the return button is pressed
-    if (b == 0) nuristate = !nuristate;
-    if (b == 1) clearTL(page-3, nuristate);
-    while (tft.getTouch(&t_x, &t_y)) {  // screen is pressed, stop everything to debounce
+          if (t_x > tft.width() / 2 - 15 &&
+            t_x < tft.width() / 2 + 15 &&
+            t_y > nuriBut_Y - (nuribut_Hei) / 2&&
+            t_y < nuriBut_Y + (nuribut_Hei) / 2) { //the changing state buton is pressed
+
+            simpleBut(butlab[!nuristate], tft.width() / 2, nuriBut_Y, nuriBut_X - tft.width() / 2 - 5 * 4, nuribut_Hei, !nuristate);
+            simpleBut("SET", nuriBut_X, nuriBut_Y, nuribut_Wid, nuribut_Hei, !nuristate);
+            simpleBut("Fill!", nuriBut_X + nuribut_Wid + 5, nuriBut_Y, nuribut_Wid, nuribut_Hei, !nuristate);
+
+            while (tft.getTouch(&t_x, &t_y)) {  // screen is pressed, stop everything to debounce
               }
-            if (b == 0) simpleBut(butlab[nuristate], nuriBut_X + b * nuribut_Wid + b * 5, nuriBut_Y, nuribut_Wid, nuribut_Hei, nuristate);
-            if (b == 1) simpleBut("Fill!", nuriBut_X + b * nuribut_Wid + b * 5, nuriBut_Y, nuribut_Wid, nuribut_Hei, 0);
-/*
-            tft.setTextPadding(50);
-            tft.setTextColor(TEXT_COLOR, BACKGROUND_COLOR);
-            tft.drawNumber(nuristate, 20, tft.height() / 2 + 15, 4);
-*/
+            nuristate = !nuristate;
             }
-          }
-          if (t_y > 170 && t_y < 200) {
-            int timer = t_x;
-            tft.setTextDatum(MC_DATUM);
-            tft.setTextColor(TEXT_COLOR, BACKGROUND_COLOR);
-            String message;
-            timer = remapExponential(timer, tft.width());
-            if (timer < 60) {
-              message = timer;
-              tft.setTextPadding(tft.drawString(message + "s", 100, nuriBut_Y+5, 4) + 10);
-              }
-            else {
-              message = (timer / 60);
-              tft.setTextPadding(tft.drawString(message + "min", 100, nuriBut_Y + 5, 4) + 10);
-              }
+          if (t_y > 170 && t_y < 200) { //touch on the slider timespan zone
+
+            drawDuration(t_x);
+
             }
-          while (tft.getTouch(&t_x, &t_y) && t_y > timeLine_Y && t_y < timeLine_Y + 10 + 20) { //if touch on the timeline
+          while (tft.getTouch(&t_x, &t_y) && t_y > timeLine_Y && t_y < timeLine_Y + 10 + 25) { //if touch on the timeline
 
             // Update touch readings
             touchX[currentIndex] = t_x;
@@ -1115,57 +1110,38 @@ for (int b = 0 ; b < 2 ; b++){
               avgY = sumY / count;
               }
 
-            
-            tft.fillRect(0, timeLine_Y + 10 + 11, tft.width(), 15, BACKGROUND_COLOR);//errase cursors
-            tft.fillTriangle(avgX, timeLine_Y + 10+11, avgX - 3, timeLine_Y + 10 + 11 + 3, avgX + 3, timeLine_Y + 10 + 11 + 3, TEXT_COLOR); //draw cursor
-            // Convert cursor to hour and minute
-            int hour = ((avgX-16) * 5) / 60;
-            int minute = ((avgX-16) * 5) % 60;
-            // Format the hour and minute as a string
-            char timeString[6];
-            sprintf(timeString, "%02d:%02d", hour, minute);
-            tft.setTextDatum(TC_DATUM);
-            tft.setTextColor(TEXT_COLOR, BACKGROUND_COLOR);
-            tft.drawString(timeString, avgX, timeLine_Y + 10 + 11 + 7,1);
-            delay(3);
-
-            /*
-            if (abs(temp_cursor - (t_x-16)) > 10) temp_cursor = (t_x-16); //cursor too far from pen : go on it
-            if (temp_cursor < t_x - 16) {
-              temp_cursor++;
-              }
-            if (temp_cursor > t_x - 16) {
-              temp_cursor--;
-              }
-            temp_cursor = constrain(temp_cursor, 0, 287);*/
-           // if (!tft.getTouch(&t_x, &t_y)) IOstates[avgX - 16][page - 3] = nuristate;
-         // drawSpecTimeLine(page - 3);
+            drawTimeAsString(avgX);
             }
-
-/*
-            tft.setTextColor(TEXT_COLOR, BACKGROUND_COLOR);
-            tft.setTextDatum(CL_DATUM);
-            tft.setTextPadding(80);
-            tft.drawNumber(temp_cursor, 35, tft.height() / 2 + 10, 4);
-*/
-          drawSpecTimeLine(page - 3);
-            }
-          }
-      if (page == 5) { // setting for the mist
-        if (tft.getTouch(&t_x, &t_y, 250)) { //touch detected
-
-          }
-        }
-      if (page == 6) { // setting for the fan
-        if (tft.getTouch(&t_x, &t_y, 250)) { //touch detected
           
-          }
-        }
-      if (page == 7) { // setting for the sunset
-        if (tft.getTouch(&t_x, &t_y, 250)) { //touch detected
+          if (t_x > nuriBut_X - nuribut_Wid / 2 && t_x < nuriBut_X + nuribut_Wid / 2 &&
+            t_y > nuriBut_Y - 35 - nuribut_Hei / 2 && t_y < nuriBut_Y - 35 + nuribut_Hei / 2) { //touch on left arrow
+            avgX--;
+            tft.fillRect(0, timeLine_Y + 10 + 11, tft.width(), 20, BACKGROUND_COLOR);//errase cursors
+            tft.fillTriangle(avgX, timeLine_Y + 10 + 11, avgX - 3, timeLine_Y + 10 + 11 + 3, avgX + 3, timeLine_Y + 10 + 11 + 3, TEXT_COLOR); //draw cursor
+            drawTimeAsString(avgX);
+            delay(10);
+            }
+          if (t_x > nuriBut_X - nuribut_Wid / 2 + nuribut_Wid + 5 && t_x < nuriBut_X + nuribut_Wid / 2 + nuribut_Wid + 5 &&
+            t_y > nuriBut_Y - 35 - nuribut_Hei / 2 && t_y < nuriBut_Y - 35 + nuribut_Hei / 2) { //touch on R arrow
+            avgX++;
+            tft.fillRect(0, timeLine_Y + 10 + 11, tft.width(), 20, BACKGROUND_COLOR);//errase cursors
+            tft.fillTriangle(avgX, timeLine_Y + 10 + 11, avgX - 3, timeLine_Y + 10 + 11 + 3, avgX + 3, timeLine_Y + 10 + 11 + 3, TEXT_COLOR); //draw cursor
+            drawTimeAsString(avgX);
+            delay(10);
+            }
+          
+          if (t_x > nuriBut_X - nuribut_Wid / 2 && t_x < nuriBut_X + nuribut_Wid / 2 &&
+            t_y > nuriBut_Y - nuribut_Hei / 2 && t_y < nuriBut_Y + nuribut_Hei / 2) {  // check if the set button is pressed
+            while (tft.getTouch(&t_x, &t_y)) {  // screen is pressed, stop everything to debounce
+              }
+            nuristate == 0 ? IOstates[avgX - 16][page - 3] = 0 : IOstates[avgX - 16][page - 3] = timer;
+//            IOstates[avgX - 16][page - 3] = nuristate;
+            }
 
+          drawSpecTimeLine(page - 3);
           }
         }
+
       if (page != 0) { //common to page other than the main
         if (t_x > 50 && t_x < 100 && t_y > 200 && t_y < 200 + 40) {  // check if the return button is pressed
           while (tft.getTouch(&t_x, &t_y)) {  // screen is pressed, stop everything
@@ -1177,7 +1153,7 @@ for (int b = 0 ; b < 2 ; b++){
             page = 0; //return to main page
             }
           }
-          }
+        }
       else  // when no touch detected
         {
         }
@@ -1186,16 +1162,16 @@ for (int b = 0 ; b < 2 ; b++){
 
   if (oldPressed != pressed) { //touch has been released
     if (page == 4) {
-      IOstates[avgX - 16][page - 3] = nuristate;
+      drawTimeAsString(avgX);
       drawSpecTimeLine(page - 3);
       }
     }
 
   oldPressed = pressed;
-  
+
   /////////////Updating the LCD brightness/////////////////
-    int BLintens = 500 - (millis() - lastPress) / 10;
-    if (BLintens > MAXBL) BLintens = MAXBL;
-    if (BLintens < MINBL) BLintens = MINBL;
-    page == 0 ? analogWrite(TFT_BL, BLintens) : analogWrite(TFT_BL, 255); //set BL adaptive on main page only 
+  int BLintens = 500 - (millis() - lastPress) / 10;
+  if (BLintens > MAXBL) BLintens = MAXBL;
+  if (BLintens < MINBL) BLintens = MINBL;
+  page == 0 ? analogWrite(TFT_BL, BLintens) : analogWrite(TFT_BL, 255); //set BL adaptive on main page only 
   }
