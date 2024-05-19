@@ -7,5 +7,5 @@
 *.hxx linguist-language=C++
 
 # Optionally, you can also exclude certain directories from language statistics
-# docs/* linguist-documentation=true
-# examples/* linguist-vendored=true
+docs/* linguist-documentation=true
+examples/* linguist-vendored=true
