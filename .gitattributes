@@ -1,0 +1,11 @@
+# Specify the language for specific file extensions
+*.cpp linguist-language=C++
+*.hpp linguist-language=C++
+*.cc linguist-language=C++
+*.hh linguist-language=C++
+*.cxx linguist-language=C++
+*.hxx linguist-language=C++
+
+# Optionally, you can also exclude certain directories from language statistics
+# docs/* linguist-documentation=true
+# examples/* linguist-vendored=true
