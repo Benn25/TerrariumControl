@@ -19,7 +19,7 @@
 #define mettersYpos 197  // Y position of the round metters
 
 #define MAXBL 255    // max backlight
-#define MINBL 25     // min backlight
+#define MINBL 60     // min backlight
 #define max_temp 45  // maximum reachable temperature
 #define FanWorkTime 60 //duration you want the fan to work for
 #define timeLine_Y 45 //Y position of the timeline for settings
@@ -95,3 +95,11 @@ float Maxdurations[5] = { //max duration for each parameters, in h
 #define SunriseSummer 283 //the min of day of sunrise on jun 21
 #define SunsetWinter 1009 //the min of day of sunset on dec 21
 #define SunsetSummer 1154 //the min of day of sunset on jun 21
+
+#define Pin_Fan 5
+#define Pin_Fan 5
+#define Pin_Fan 5
+#define Pin_Fan 5
+#define Pin_Fan 5
+
+int Out_Pin[5] = { 5,6,7,8,9 }; //pins for all the outputs

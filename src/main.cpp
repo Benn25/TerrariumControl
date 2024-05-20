@@ -115,7 +115,15 @@ int avgY;
 int timer = 60; //the timer for the timespan
 int SunriseMin;
 int SunsetMin;
+int IOdurations[5]={}; //all the ON durations
 
+//timestamps :
+unsigned long fanTS;
+unsigned long mistTS;
+unsigned long lightTS;
+unsigned long pumpTS;
+unsigned long seclightTS;
+unsigned long IOtimeStamps[5] = {};
 
 #define TFT_BL 32              // LED back-light control pin
 #define TFT_BACKLIGHT_ON HIGH  // Level to turn ON back-light (HIGH or LOW)
@@ -146,6 +154,14 @@ bool mistOut = 0; //mist ON/OFF
 bool lightOut = 0; //main light ON/OFF
 bool pumpOut = 0; //water pump ON/OFF
 bool secLightOut = 0; //secondary light analog write 256 values
+bool PinOutStates[5] = {};
+
+//track the changing state (useless?)
+bool oldFanOut = 0; //air fan ON/OFF
+bool oldmistOut = 0; //mist ON/OFF
+bool oldlightOut = 0; //main light ON/OFF
+bool oldpumpOut = 0; //water pump ON/OFF
+bool oldsecLightOut = 0; //secondary light analog write 256 values
 
 
 uint16_t RGB888toRGB565(const char* rgb32_str_) {
@@ -279,6 +295,15 @@ int remapExponential(int toTimer/*the value to evaluate*/, int upbound/*max valu
 void clearTL(int timeLineID, int Val) {
   for (int a = 0; a < 288; a++) {
     IOstates[a][timeLineID] = Val;
+    }
+  }
+
+void outputStates() {
+  for (int IO = 0; IO < 5; IO++) {
+    if (IOtimeStamps[IO] < IOdurations[IO] + millis())  {
+      //PinOutStates[IO] = 0;
+      Out_Pin[IO] = 0;
+      }
     }
   }
 
@@ -1385,8 +1410,10 @@ void loop() {
 
   oldPressed = pressed;
 
+  outputStates(); //change the outputs according to what is needed
+  
   /////////////Updating the LCD brightness/////////////////
-  int BLintens = 500 - (millis() - lastPress) / 10;
+  int BLintens = 1000 - (millis() - lastPress) / 10;
   if (BLintens > MAXBL) BLintens = MAXBL;
   if (BLintens < MINBL) BLintens = MINBL;
   page == 0 ? analogWrite(TFT_BL, BLintens) : analogWrite(TFT_BL, 255); //set BL adaptive on main page only 
