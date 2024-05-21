@@ -115,7 +115,7 @@ int avgY;
 int timer = 60; //the timer for the timespan
 int SunriseMin;
 int SunsetMin;
-int IOdurations[5]={}; //all the ON durations
+int IOdurations[5]={}; //all the ON durations, dynamically change depending on the settings of IOstates[]
 
 //timestamps :
 unsigned long fanTS;
@@ -168,6 +168,7 @@ uint16_t RGB888toRGB565(const char* rgb32_str_) {
   long rgb32 = strtoul(rgb32_str_, 0, 16);
   return (rgb32 >> 8 & 0xf800) | (rgb32 >> 5 & 0x07e0) | (rgb32 >> 3 & 0x001f);
   }
+
 
 int IOstates[288][5] = {}; //settings data, when to light up, when to start the pump etc...
 //order, from top in the timeline : light, pump, mist, fan, secLight
@@ -238,6 +239,72 @@ void touch_calibrate() {
     }
   }
 
+
+class classtoggleSW {
+public:
+  int x;
+  int y;
+  bool state;
+  const char* label;
+  int disp;
+
+  void drawTW() { //draw the toggleSW
+    static bool oldState = state;
+    static int augment = 2; //size to add to the contener to be bigger that the dot
+    static int rad = 7; //size of the round in px
+    static int interSpace = rad / 2 + 1;
+    static int wide = 4 * rad + interSpace + augment * 2; //wideness L to R(max)
+
+    static int minR = 20;
+    static int minG = 40;
+    static int minB = 28;
+
+    static int R = 28;
+    static int G = 25;
+    static int B = 10;
+
+    if (page != last_page) {
+      //state changed, nee to draw
+     // Serial.println("redraw the button");
+      }
+    if (oldState != state) {
+      //state changed, nee to draw
+     // Serial.println("refreshed state");
+      }
+    if (disp != state * 10 + 1 || page != last_page) {//do a cool animation
+      disp < state * 10 + 1 ? disp++ : disp--;
+      tft.setTextPadding(1);
+      tft.setTextDatum(CR_DATUM);
+      tft.setTextColor(INV_TEXT_COLOR);
+      //txt label
+      tft.fillSmoothRoundRect(x - wide / 2 - tft.drawString(label, x - rad * 2 - interSpace / 2 - 5, y + 1, 1) - 7,
+        y - rad - 2 + 4, wide + 1 + tft.drawString(label, 10, 10, 1), rad * 2 + augment * 2 + 1 - 8, rad + augment, TFT_MIDGREY, BACKGROUND_COLOR);
+      tft.drawString(label, x - rad * 2 - interSpace / 2 - 5, y + 1, 1);
+      //Serial.println(disp);
+      tft.setTextColor(TEXT_COLOR);
+      //tft.setFreeFont(TT1);
+      tft.setTextSize(1);
+      tft.fillSmoothRoundRect(x - wide / 2, y - rad - 2, wide + 1, rad * 2 + augment * 2 + 1, rad + augment,
+        ((map(disp, 1, 11, minR, R) << 11) |
+        (map(disp, 1, 11, minG, G) << 5) |
+        map(disp, 1, 11, minB, B)),
+        BACKGROUND_COLOR);
+
+      tft.setTextDatum(CR_DATUM);
+      if (disp > 8) tft.drawString("OFF", x + 2, y + 1, 1);
+      tft.setTextDatum(CL_DATUM);
+      if (disp < 3) tft.drawString("ON", x + 3, y + 1, 1);
+      tft.fillSmoothCircle(x - rad - interSpace / 2 + map(disp, 1, 11, 0, 2 * rad + interSpace), y, rad, TFT_LIGHTGREY,
+        ((map(disp, 1, 11, 8, 28) << 11) | (G << 5) | map(disp, 11, 1, 8, B) << 5));
+      tft.setFreeFont(GLCD);
+      tft.setTextSize(1);
+      }
+    oldState = state;
+    }
+  };
+
+classtoggleSW FanSW, lightSW, pumpSW, mistSW, seclightSW;
+
 void getSunriseSunset(int val/*Day of year, from 0 to 364*/) {
   //int eventMin = 500 * sin(((354 - 80) / 365) * 3.14158 * 2) + 500; //range from 0 to 1000, need remap
   float eventMin = (val - 80);
@@ -298,13 +365,31 @@ void clearTL(int timeLineID, int Val) {
     }
   }
 
+int minOfDay() {
+  int minOfDay;
+  minOfDay = rtc.getHour(true) * 60;
+  minOfDay += rtc.getMinute();
+  return minOfDay;
+  }
+
 void outputStates() {
+  //first, check if need to switch ON
   for (int IO = 0; IO < 5; IO++) {
-    if (IOtimeStamps[IO] < IOdurations[IO] + millis())  {
+    if (IOstates[minOfDay()][IO]) { //if a timestamp is set for this time of the day
+      IOtimeStamps[IO] = IOstates[minOfDay()][IO];//set the timestamps
+      digitalWrite(Out_Pin[IO], 1); //switch ON the needed pins
+      }
+    //next, check if need to switch OFF
+    if (IOtimeStamps[IO] + IOdurations[IO] < millis()) {
       //PinOutStates[IO] = 0;
-      Out_Pin[IO] = 0;
+      digitalWrite(Out_Pin[IO], 0); //switch OFF the needed pins
       }
     }
+  lightSW.state = Out_Pin[0];//lightOut;
+  pumpSW.state = Out_Pin[1];//pumpOut;
+  mistSW.state = Out_Pin[2];//mistOut;
+  FanSW.state = Out_Pin[3];//FanOut;
+  seclightSW.state = Out_Pin[4];//secLightOut;
   }
 
 void saveInFS(int IOchan) {
@@ -810,7 +895,7 @@ void drawSplash(int p) {  // draw the splash coresponding to the page
 
     }
   }
-
+/*
 class classtoggleSW {
 public:
   int x;
@@ -865,16 +950,15 @@ public:
       if (disp > 8) tft.drawString("OFF", x + 2, y + 1, 1);
       tft.setTextDatum(CL_DATUM);
       if (disp < 3) tft.drawString("ON", x + 3, y + 1, 1);
-      tft.fillSmoothCircle(x - rad - interSpace / 2 + map(disp, 1, 11, 0, 2 * rad + interSpace), y, rad, TFT_MIDGREY,
+      tft.fillSmoothCircle(x - rad - interSpace / 2 + map(disp, 1, 11, 0, 2 * rad + interSpace), y, rad, TFT_LIGHTGREY,
         ((map(disp, 1, 11, 8, 28) << 11) | (G << 5) | map(disp, 11, 1, 8, B) << 5));
       tft.setFreeFont(GLCD);
       tft.setTextSize(1);
       }
     oldState = state;
     }
-
   };
-
+*/
 void toggleSW(int x, int y, bool state, const char* label) {
   static bool oldState = state;
   static int augment = 2; //size to add to the contener to be bigger that the dot
@@ -921,7 +1005,6 @@ void toggleSW(int x, int y, bool state, const char* label) {
 
 long debugval = 0;  // shit to increase to simulate changing values
 
-classtoggleSW FanSW, lightSW, pumpSW, mistSW, seclightSW;
 
 void setup() {
   Serial.begin(115200);
@@ -1410,8 +1493,9 @@ void loop() {
 
   oldPressed = pressed;
 
-  outputStates(); //change the outputs according to what is needed
-  
+  if (rtc.getMinute() % 5 == 0 && rtc.getSecond() < 5) { //check for 5 sec every 5 min if we need to activate something
+    outputStates(); //change the outputs according to what is needed
+    }
   /////////////Updating the LCD brightness/////////////////
   int BLintens = 1000 - (millis() - lastPress) / 10;
   if (BLintens > MAXBL) BLintens = MAXBL;
