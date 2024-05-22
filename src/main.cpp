@@ -162,7 +162,7 @@ bool oldmistOut = 0; //mist ON/OFF
 bool oldlightOut = 0; //main light ON/OFF
 bool oldpumpOut = 0; //water pump ON/OFF
 bool oldsecLightOut = 0; //secondary light analog write 256 values
-
+bool OldPinOutStates[5] = {};
 
 uint16_t RGB888toRGB565(const char* rgb32_str_) {
   long rgb32 = strtoul(rgb32_str_, 0, 16);
@@ -285,17 +285,17 @@ public:
       //tft.setFreeFont(TT1);
       tft.setTextSize(1);
       tft.fillSmoothRoundRect(x - wide / 2, y - rad - 2, wide + 1, rad * 2 + augment * 2 + 1, rad + augment,
-        ((map(disp, 1, 11, minR, R) << 11) |
-        (map(disp, 1, 11, minG, G) << 5) |
-        map(disp, 1, 11, minB, B)),
+        ((map(disp, 11, 1, minR, R) << 11) |
+        (map(disp, 11, 1, minG, G) << 5) |
+        map(disp, 11, 1, minB, B)),
         BACKGROUND_COLOR);
 
       tft.setTextDatum(CR_DATUM);
-      if (disp > 8) tft.drawString("OFF", x + 2, y + 1, 1);
+      if (disp > 8) tft.drawString("ON", x - 2, y + 1, 1);
       tft.setTextDatum(CL_DATUM);
-      if (disp < 3) tft.drawString("ON", x + 3, y + 1, 1);
+      if (disp < 3) tft.drawString("OFF", x -1, y + 1, 1);
       tft.fillSmoothCircle(x - rad - interSpace / 2 + map(disp, 1, 11, 0, 2 * rad + interSpace), y, rad, TFT_LIGHTGREY,
-        ((map(disp, 1, 11, 8, 28) << 11) | (G << 5) | map(disp, 11, 1, 8, B) << 5));
+        ((map(disp, 11, 1, 8, 28) << 11) | (G << 5) | map(disp, 1, 11, 8, B) << 5));
       tft.setFreeFont(GLCD);
       tft.setTextSize(1);
       }
@@ -339,6 +339,15 @@ String getTimeString(int minutesOfDay) {
   return String(timeStr);
   }
 
+String getHourMin() {
+  int hours = rtc.getHour(true);
+  int minutes = rtc.getMinute();
+  // Format the hours and minutes as a string
+  char timeStr[6];  // HH:MM format requires 5 characters + 1 for the null terminator
+  sprintf(timeStr, "%02d:%02d", hours, minutes);
+  return String(timeStr);
+  }
+
 float sineWave(long phase, int upperBound) {
   // ################################################################################################################################
   // Return a value in range -1 to +1 for a given phase angle in degrees
@@ -375,21 +384,39 @@ int minOfDay() {
 void outputStates() {
   //first, check if need to switch ON
   for (int IO = 0; IO < 5; IO++) {
-    if (IOstates[minOfDay()][IO]) { //if a timestamp is set for this time of the day
-      IOtimeStamps[IO] = IOstates[minOfDay()][IO];//set the timestamps
-      digitalWrite(Out_Pin[IO], 1); //switch ON the needed pins
+    //first, switch ON if needed:
+    if (rtc.getMinute() % 5 == 0 && rtc.getSecond() < 5) { //check for 5 sec every 5 min if we need to activate something
+      if (IOstates[minOfDay()/5][IO] != 0) { //if a timestamp is set for this time of the day
+        IOtimeStamps[IO] = millis();//reset the timestamps
+        IOdurations[IO] = IOstates[minOfDay()/5][IO]; //set the corresponding duration in ms
+        PinOutStates[IO] = HIGH; //put this pin ON
+      Serial.print("pump duration : ");
+      Serial.println(IOstates[minOfDay() / 5][1]);
+        }
       }
+
     //next, check if need to switch OFF
-    if (IOtimeStamps[IO] + IOdurations[IO] < millis()) {
-      //PinOutStates[IO] = 0;
-      digitalWrite(Out_Pin[IO], 0); //switch OFF the needed pins
+    if (IOtimeStamps[IO] + (IOdurations[IO]*1000) < millis() && PinOutStates[IO] == HIGH) { //if ON and times up
+      PinOutStates[IO] = LOW; //put the pin OFF
+      Serial.print("order to go off on : ");
+      Serial.println(IO);
+      }
+    
+    
+    if (PinOutStates[IO] != OldPinOutStates[IO]) { //if there was a change in state, update the toggle switch
+      digitalWrite(Out_Pin[IO], PinOutStates[IO]); //switch ON or OFF the needed pins
+      Serial.print("a change in state was detected in IO : ");
+      Serial.println(IO);
+      //update the ToggleS:
+      lightSW.state = PinOutStates[0];//lightOut;
+      pumpSW.state = PinOutStates[1];//pumpOut;
+      Serial.print("set pump to : ");
+      Serial.println(PinOutStates[1]);
+      mistSW.state = PinOutStates[2];//mistOut;
+      FanSW.state = PinOutStates[3];//FanOut;
+      seclightSW.state = PinOutStates[4];//secLightOut;
       }
     }
-  lightSW.state = Out_Pin[0];//lightOut;
-  pumpSW.state = Out_Pin[1];//pumpOut;
-  mistSW.state = Out_Pin[2];//mistOut;
-  FanSW.state = Out_Pin[3];//FanOut;
-  seclightSW.state = Out_Pin[4];//secLightOut;
   }
 
 void saveInFS(int IOchan) {
@@ -463,10 +490,10 @@ void saveDate() {
   if (file) {
     file.println(datetime);
     file.close();
-    Serial.println("Saved datetime: " + datetime);
+    //Serial.println("Saved datetime: " + datetime);
     }
   else {
-    Serial.println("Failed to open file for writing");
+    //Serial.println("Failed to open file for writing");
     }
   }
 
@@ -630,15 +657,7 @@ void drawGraph() {
 void drawTimeStringCursor(int val) {
   tft.fillRect(0, timeLine_Y + 10 + 11, tft.width(), 20, BACKGROUND_COLOR);//errase cursors
   tft.fillTriangle(val, timeLine_Y + 10 + 11, val - 3, timeLine_Y + 10 + 11 + 3, val + 3, timeLine_Y + 10 + 11 + 3, TEXT_COLOR); //draw cursor
-  // Convert cursor to hour and minute
-/*
-  getTimeString((val - 16) * 5);
-  int hour = ((val - 16) * 5) / 60;
-  int minute = ((val - 16) * 5) % 60;
-  // Format the hour and minute as a string
-  char timeString[6];
-  sprintf(timeString, "%02d:%02d", hour, minute);
-*/
+  
   tft.setTextDatum(TC_DATUM);
   tft.setTextColor(TEXT_COLOR, BACKGROUND_COLOR);
   tft.drawString(getTimeString((val - 16) * 5), val, timeLine_Y + 10 + 11 + 10, 1); //draw the selected hour as string
@@ -1003,9 +1022,6 @@ void toggleSW(int x, int y, bool state, const char* label) {
   oldState = state;
   }
 
-long debugval = 0;  // shit to increase to simulate changing values
-
-
 void setup() {
   Serial.begin(115200);
   tft.init();
@@ -1235,7 +1251,14 @@ void loop() {
   if (page == 2) { //things to refresh every loop on settings screen 
     if (millis() - lastTimeForRef >= 1500 || lastTimeForRef == 0 || last_page != page) {  // low refresh rate of this page
       lastTimeForRef = millis();
+      //draw a cute clock in the corner
+      tft.setTextDatum(TL_DATUM);
+      tft.setTextColor(TEXT_COLOR,BACKGROUND_COLOR);
+      tft.drawString(getHourMin(), 2, 2,1);
 
+      //draw a triangle to show the time on the timeline
+      tft.fillRect(10, timeLine_Y-5, tft.width()-20, 5, BACKGROUND_COLOR);//errase cursors
+      tft.fillTriangle(minOfDay() + 16, timeLine_Y-1, minOfDay() + 16 - 3, timeLine_Y-1 - 3, minOfDay() + 16 + 3, timeLine_Y-1- 3, TEXT_COLOR); //draw cursor
 
       }
     //draw the sliders for settings hours and min and get the min of the day
@@ -1243,8 +1266,14 @@ void loop() {
     //s2.getSliderPosition();
     }
 
-  if (page == 3) { //things to refresh every loop on corresponding setting page
-
+  if (page > 2) { //things to refresh every loop on corresponding setting page
+    if (millis() - lastTimeForRef >= 1500 || lastTimeForRef == 0 || last_page != page) {  // low refresh rate of this page
+      lastTimeForRef = millis();
+      //draw a cute clock in the corner
+      tft.setTextDatum(TL_DATUM);
+      tft.setTextColor(TEXT_COLOR, BACKGROUND_COLOR);
+      tft.drawString(getHourMin(), 2, 2, 1);
+      }
     }
   // delay(25);
 
@@ -1279,52 +1308,72 @@ void loop() {
             page = 2; //go to main setup page
             }
 
-          if (t_y < FanSW.y + 9 &&
-            t_y > FanSW.y - 9 &&
-            t_x < FanSW.x + 20 &&
-            t_x > FanSW.x - 20) { //fan toggle Switch touched
-            FanOut = !FanOut;
+          if (t_y < lightSW.y + 9 &&
+            t_y > lightSW.y - 9 &&
+            t_x < lightSW.x + 20 &&
+            t_x > lightSW.x - 20) { //fan toggle Switch touched
+            if (PinOutStates[0] == 0) { //we were OFF, do what is needed to switch ON
+              IOtimeStamps[0] = millis();//set the timestamp
+              IOdurations[0] = 3600 *6; //set the duration
+              }
+            PinOutStates[0] = !PinOutStates[0];
             }
 
           if (t_y < pumpSW.y + 9 &&
             t_y > pumpSW.y - 9 &&
             t_x < pumpSW.x + 20 &&
             t_x > pumpSW.x - 20) { //fan toggle Switch touched
-            pumpOut = !pumpOut;
+            Serial.println("pump Switch touched");
+            if (PinOutStates[1] == 0) { //we were OFF, do what is needed to switch ON
+            IOtimeStamps[1] = millis();//set the timestamp
+            IOdurations[1] = 3600 / 4; //set the duration
+              }
+            PinOutStates[1] = !PinOutStates[1];
             }
-
-
-          if (t_y < lightSW.y + 9 &&
-            t_y > lightSW.y - 9 &&
-            t_x < lightSW.x + 20 &&
-            t_x > lightSW.x - 20) { //fan toggle Switch touched
-            lightOut = !lightOut;
+          
+          if (t_y < mistSW.y + 9 &&
+            t_y > mistSW.y - 9 &&
+            t_x < mistSW.x + 20 &&
+            t_x > mistSW.x - 20) { //fan toggle Switch touched
+            if (PinOutStates[2] == 0) { //we were OFF, do what is needed to switch ON
+              IOtimeStamps[2] = millis();//set the timestamp
+              IOdurations[2] = 60*10; //set the duration
+              }
+            PinOutStates[2] = !PinOutStates[2];
+            }
+          
+          if (t_y < FanSW.y + 9 &&
+            t_y > FanSW.y - 9 &&
+            t_x < FanSW.x + 20 &&
+            t_x > FanSW.x - 20) { //fan toggle Switch touched
+            if (PinOutStates[3] == 0) { //we were OFF, do what is needed to switch ON
+              IOtimeStamps[3] = millis();//set the timestamp
+              IOdurations[3] = 30; //set the duration
+              }
+            PinOutStates[3] = !PinOutStates[3];
             }
 
           if (t_y < seclightSW.y + 9 &&
             t_y > seclightSW.y - 9 &&
             t_x < seclightSW.x + 20 &&
             t_x > seclightSW.x - 20) { //fan toggle Switch touched
-            secLightOut = !secLightOut;
-            }
-
-          if (t_y < mistSW.y + 9 &&
-            t_y > mistSW.y - 9 &&
-            t_x < mistSW.x + 20 &&
-            t_x > mistSW.x - 20) { //fan toggle Switch touched
-            mistOut = !mistOut;
+            if (PinOutStates[4] == 0) { //we were OFF, do what is needed to switch ON
+              IOtimeStamps[4] = millis();//set the timestamp
+              IOdurations[4] = 30; //set the duration
+              }
+            PinOutStates[4] = !PinOutStates[4];
             }
 
           while (
             tft.getTouch(&t_x, &t_y)) {  // screen is pressed, stop everything
             }
-
+/*
           FanSW.state = FanOut;
           pumpSW.state = pumpOut;
           lightSW.state = lightOut;
           seclightSW.state = secLightOut;
           mistSW.state = mistOut;
-
+*/
 
           }
         }
@@ -1486,17 +1535,20 @@ void loop() {
 
   if (oldPressed != pressed) { //touch has been released
     if (page == 4) {
-      drawTimeStringCursor(avgX);
-      drawSpecTimeLine(page - 3);
+     // drawTimeStringCursor(avgX);
+     // drawSpecTimeLine(page - 3);
       }
     }
 
   oldPressed = pressed;
 
-  if (rtc.getMinute() % 5 == 0 && rtc.getSecond() < 5) { //check for 5 sec every 5 min if we need to activate something
     outputStates(); //change the outputs according to what is needed
-    }
-  /////////////Updating the LCD brightness/////////////////
+
+    for (int a = 0; a < 5; a++) {
+      OldPinOutStates[a] = PinOutStates[a];
+      }
+    
+    /////////////Updating the LCD brightness/////////////////
   int BLintens = 1000 - (millis() - lastPress) / 10;
   if (BLintens > MAXBL) BLintens = MAXBL;
   if (BLintens < MINBL) BLintens = MINBL;
