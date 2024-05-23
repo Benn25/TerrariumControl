@@ -116,6 +116,7 @@ int timer = 60; //the timer for the timespan
 int SunriseMin;
 int SunsetMin;
 int IOdurations[5]={}; //all the ON durations, dynamically change depending on the settings of IOstates[]
+int indexOfSunrise; //the state of sunrise/sunset. on a palette going from blue/black then red/tellow then white
 
 //timestamps :
 unsigned long fanTS;
@@ -1131,6 +1132,8 @@ void setup() {
   for (int a = 0; a < 5; a++) {
     readFromFS(a);
     delay(20); //sanity delay
+
+    pinMode(Out_Pin[a], OUTPUT); //initialise the pins for outputs
     }
 
   /////for debug ////
@@ -1141,16 +1144,21 @@ void setup() {
 void loop() {
   if (last_page != page) {  // the page changed, refresh the screen
     // Serial.println("switch page");
-    dispHum = 0;                       // just for the style
+    dispHum = 0;                       // just for the style, it restarts the meters animation
     dispTemp = 0;                      // juste for the style
     tft.fillScreen(BACKGROUND_COLOR);  // errase all
     drawSplash(page);  // draw the splash of the coresponding page
     }
 
+  if (rtc.getHour(true)==0 && rtc.getMinute() == 0 && rtc.getSecond() < 5) {
+//    
+    }
+
+  
   static uint32_t lastTime = 0;  // holds its value after every iteration of loop
-  if (millis() - lastTime >= 20000 || lastTime == 0) {  // read sensor every 2000 milliseconds
-    // Serial.println((String)"page: " + page);
-    lastTime = millis();
+  if (millis() - lastTime >= 20000 || lastTime == 0) {  // read sensor every X milliseconds
+    lastTime = millis(); //reset the last time TS
+    //also do very low refresh things
     // read DHT data every 2 sec here
     mySensor.read();
     hum = mySensor.getHumidity();
@@ -1158,6 +1166,7 @@ void loop() {
     hum = constrain(hum, 0, 100);         // clamp values
     temp = constrain(temp, 0, max_temp);  // clamp values
     saveDate(); //save the time every once in a while
+    getSunriseSunset(rtc.getDayofYear()); //refresh the time of sunrise and sunset
     for (int a = 0; a < 319; a++) {  // record the new data as array
       if (a == 0) {
         graphLine[a][0] = temp;

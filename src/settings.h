@@ -102,4 +102,4 @@ float Maxdurations[5] = { //max duration for each parameters, in h
 #define Pin_Fan 5
 #define Pin_Fan 5
 
-int Out_Pin[5] = { 5,6,7,8,9 }; //pins for all the outputs
+int Out_Pin[5] = { 12,13,14,16,17 }; //pins for all the outputs
