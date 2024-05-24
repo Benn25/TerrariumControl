@@ -10,6 +10,7 @@
             "includePath": [
                 "g:/projects arduino/TerrariumControl/include",
                 "g:/projects arduino/TerrariumControl/src",
+                "g:/projects arduino/TerrariumControl/lib/FastLED/src",
                 "g:/projects arduino/TerrariumControl/.pio/libdeps/ESP32/ESP32Time",
                 "g:/projects arduino/TerrariumControl/.pio/libdeps/ESP32/TFT_eWidget/src",
                 "g:/projects arduino/TerrariumControl/.pio/libdeps/ESP32/DHTNEW",
@@ -211,6 +212,7 @@
                 "g:/projects arduino/TerrariumControl/lib/DHTNEW",
                 "g:/projects arduino/TerrariumControl/lib/ESP32Time",
                 "g:/projects arduino/TerrariumControl/lib/TFT_eWidget/src",
+                "g:/projects arduino/TerrariumControl/.pio/libdeps/ESP32/FastLED/src",
                 "g:/projects arduino/TerrariumControl/.pio/libdeps/ESP32/TFT_eSPI",
                 "C:/Users/benn2/.platformio/packages/framework-arduinoespressif32/libraries/ArduinoOTA/src",
                 "C:/Users/benn2/.platformio/packages/framework-arduinoespressif32/libraries/AsyncUDP/src",
@@ -248,6 +250,7 @@
                 "path": [
                     "g:/projects arduino/TerrariumControl/include",
                     "g:/projects arduino/TerrariumControl/src",
+                    "g:/projects arduino/TerrariumControl/lib/FastLED/src",
                     "g:/projects arduino/TerrariumControl/.pio/libdeps/ESP32/ESP32Time",
                     "g:/projects arduino/TerrariumControl/.pio/libdeps/ESP32/TFT_eWidget/src",
                     "g:/projects arduino/TerrariumControl/.pio/libdeps/ESP32/DHTNEW",
@@ -449,6 +452,7 @@
                     "g:/projects arduino/TerrariumControl/lib/DHTNEW",
                     "g:/projects arduino/TerrariumControl/lib/ESP32Time",
                     "g:/projects arduino/TerrariumControl/lib/TFT_eWidget/src",
+                    "g:/projects arduino/TerrariumControl/.pio/libdeps/ESP32/FastLED/src",
                     "g:/projects arduino/TerrariumControl/.pio/libdeps/ESP32/TFT_eSPI",
                     "C:/Users/benn2/.platformio/packages/framework-arduinoespressif32/libraries/ArduinoOTA/src",
                     "C:/Users/benn2/.platformio/packages/framework-arduinoespressif32/libraries/AsyncUDP/src",

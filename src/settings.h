@@ -1,4 +1,5 @@
 //the buttons OK and cancel
+#include <TFT_eSPI.h>
 #define but_W 100 //OK but W
 #define but_H 30 //OK but H
 #define but_X 80 //OK but X pos
@@ -103,3 +104,6 @@ float Maxdurations[5] = { //max duration for each parameters, in h
 #define Pin_Fan 5
 
 int Out_Pin[5] = { 12,13,14,16,17 }; //pins for all the outputs
+
+#define NUM_LEDS 11
+#define DATA_PIN 3

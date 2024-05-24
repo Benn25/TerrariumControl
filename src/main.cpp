@@ -29,7 +29,7 @@
 //
 // in User_Setup uncomment in section 2:
 
-
+#include <FastLED.h>
 #include <ESP32Time.h>
 ESP32Time rtc(0);  // offset in param, but dont use it
 int HoldHour[24]; //the hour to hold when setting up a time
@@ -40,6 +40,22 @@ char const* HoldMonth[] = {
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
   };
 
+
+
+// Sunrise color palette stored in PROGMEM
+DEFINE_GRADIENT_PALETTE(sunrisePalette) {
+  0, 0, 0, 0,   // Black (night)
+    32, 42, 10, 127,  // Deep purple/blue
+    64, 255, 71, 29,  // Deep red/orange
+    96, 255, 153, 10,  // Orange
+    128, 255, 223, 35,  // Bright yellow
+    160, 255, 251, 214,  // Light yellow
+    192, 255, 255, 255,  // White
+    255, 255, 255, 255   // White (day)
+  };
+
+// Define the palette
+CRGBPalette16 sunrisePal = sunrisePalette;
 
 /*/////////////Usefull RTC get shit /////////////////
 //  Serial.println(rtc.getTime());          //  (String) 15:24:38
@@ -117,6 +133,9 @@ int SunriseMin;
 int SunsetMin;
 int IOdurations[5]={}; //all the ON durations, dynamically change depending on the settings of IOstates[]
 int indexOfSunrise; //the state of sunrise/sunset. on a palette going from blue/black then red/tellow then white
+int SunriseLen = 60; //duration of sunrise and sunset, in min
+int minOfLightON; //the minute on day the light will turn on
+int minOfLightOFF; //same for off
 
 //timestamps :
 unsigned long fanTS;
@@ -145,6 +164,8 @@ SliderWidget s2 = SliderWidget(&tft, &knob);  // Slider  widget for min
 SliderWidget sy = SliderWidget(&tft, &knob);  // Slider  widget for year 
 SliderWidget sm = SliderWidget(&tft, &knob);  // Slider  widget for month
 SliderWidget sd = SliderWidget(&tft, &knob);  // Slider  widget for day
+
+CRGB leds[NUM_LEDS];
 
 #define CALIBRATION_FILE "/TouchCalData1"
 #define REPEAT_CAL false
@@ -382,6 +403,29 @@ int minOfDay() {
   return minOfDay;
   }
 
+void findLightEnd() {
+  for (int a = 0; a < 288; a++) {
+    if (IOstates[a][0] != 0) {
+      minOfLightON = a * 5;
+      minOfLightOFF = a*5 + IOstates[a][0]/60;  
+      break;
+      }
+    }
+  //Serial.printf("min when light is on : %i \n min when off : %i \n", minOfLightON, minOfLightOFF);
+  
+  }
+
+void findIndexOfSunrise() {
+  if (minOfDay() < (minOfLightON + minOfLightOFF)/2) {//before light ON, need to ramp up the sunrise
+    indexOfSunrise = minOfDay() - (minOfLightON - SunriseLen + 6);
+    indexOfSunrise = constrain(map(indexOfSunrise,0,SunriseLen,0,255),0,255);//map and clamp the index from 0 to 255
+    }
+  else { //evening version
+    indexOfSunrise = minOfDay() - minOfLightOFF + 6;
+    indexOfSunrise = constrain(map(indexOfSunrise, 0, SunriseLen, 255, 0),0,255);
+    }
+  }
+
 void outputStates() {
   //first, check if need to switch ON
   for (int IO = 0; IO < 5; IO++) {
@@ -418,6 +462,13 @@ void outputStates() {
       seclightSW.state = PinOutStates[4];//secLightOut;
       }
     }
+
+  findIndexOfSunrise();
+  //here output chan 4 with indexOfSunrise. use a cute sunset palette !
+for(int i = 0; i < NUM_LEDS; i++) {
+    leds[i] = ColorFromPalette(sunrisePal, indexOfSunrise, 255, LINEARBLEND);
+  }
+FastLED.show();
   }
 
 void saveInFS(int IOchan) {
@@ -772,6 +823,7 @@ void drawSplash(int p) {  // draw the splash coresponding to the page
     tft.drawString("now", tft.width() - 2, LowGraphPos + 4, 1);
     tft.drawFastHLine(0, LowGraphPos + 1, 319, TFT_MIDGREY);
     drawGraph();
+    findLightEnd(); //refresh the data for light OFF, it may have been changed
     }
 
   if (p == 1) { //////////////////////////////////// Splash on option screen
@@ -1134,10 +1186,14 @@ void setup() {
     delay(20); //sanity delay
 
     pinMode(Out_Pin[a], OUTPUT); //initialise the pins for outputs
+
+    FastLED.addLeds<WS2812B, DATA_PIN, RGB>(leds, NUM_LEDS);  // GRB ordering is typical
+
     }
 
   /////for debug ////
-
+  findLightEnd();
+  findIndexOfSunrise();
   drawSplash(page);  // draw the static shit of the current
   }
 
@@ -1150,8 +1206,7 @@ void loop() {
     drawSplash(page);  // draw the splash of the coresponding page
     }
 
-  if (rtc.getHour(true)==0 && rtc.getMinute() == 0 && rtc.getSecond() < 5) {
-//    
+  if (rtc.getHour(true)==0 && rtc.getMinute() == 0 && rtc.getSecond() < 5) {//daily refresh
     }
 
   
@@ -1267,12 +1322,9 @@ void loop() {
 
       //draw a triangle to show the time on the timeline
       tft.fillRect(10, timeLine_Y-5, tft.width()-20, 5, BACKGROUND_COLOR);//errase cursors
-      tft.fillTriangle(minOfDay() + 16, timeLine_Y-1, minOfDay() + 16 - 3, timeLine_Y-1 - 3, minOfDay() + 16 + 3, timeLine_Y-1- 3, TEXT_COLOR); //draw cursor
+      tft.fillTriangle(minOfDay()/5 + 16, timeLine_Y-1, minOfDay()/5 + 16 - 3, timeLine_Y-1 - 3, minOfDay()/5 + 16 + 3, timeLine_Y-1- 3, TEXT_COLOR); //draw cursor
 
       }
-    //draw the sliders for settings hours and min and get the min of the day
-    //s1.getSliderPosition();
-    //s2.getSliderPosition();
     }
 
   if (page > 2) { //things to refresh every loop on corresponding setting page
@@ -1541,12 +1593,8 @@ void loop() {
         }
       } //end of to do when pressed
     }
-
+  
   if (oldPressed != pressed) { //touch has been released
-    if (page == 4) {
-     // drawTimeStringCursor(avgX);
-     // drawSpecTimeLine(page - 3);
-      }
     }
 
   oldPressed = pressed;
