@@ -46,14 +46,14 @@ char const* HoldMonth[] = {
 DEFINE_GRADIENT_PALETTE(sunrisePalette) {
   0, 0, 0, 0,   // Black (night)
     20, 6, 4, 20,  // super deep purple/blue
-    32, 42, 10, 127,  // Deep purple/blue
-    64, 255, 71, 29,  // Deep red/orange
-    96, 255, 153, 10,  // Orange
-    128, 255, 223, 35,  // Bright yellow
+    55, 42, 10, 127,  // Deep purple/blue
+    90, 255, 71, 29,  // Deep red/orange
+    110, 255, 153, 10,  // Orange
+    135, 255, 223, 35,  // Bright yellow
     160, 255, 251, 214,  // Light yellow
-    225, 255, 255, 255,  // White
-    249, 25, 15, 15,   // kill
-    254, 0, 0, 0,   // kill
+    235, 255, 255, 255,  // White
+    245, 10, 7, 7,   // kill
+    254, 1, 1, 1,   // kill
     255, 0, 0, 0   // kill
   };
 
@@ -411,7 +411,7 @@ void findLightEnd() {
     if (IOstates[a][0] != 0) {
       minOfLightON = a * 5;
       minOfLightOFF = a * 5 + IOstates[a][0] / 60;
-      Serial.printf("light ON : %i    -   light OFF : %i \n",minOfLightON, minOfLightOFF);
+      //Serial.printf("light ON : %i    -   light OFF : %i \n",minOfLightON, minOfLightOFF);
       break;
       }
     }
@@ -463,8 +463,8 @@ void outputStates() {
       //update the ToggleS:
       lightSW.state = PinOutStates[0];//lightOut;
       pumpSW.state = PinOutStates[1];//pumpOut;
-      Serial.print("set pump to : ");
-      Serial.println(PinOutStates[1]);
+      //Serial.print("set pump to : ");
+     // Serial.println(PinOutStates[1]);
       mistSW.state = PinOutStates[2];//mistOut;
       FanSW.state = PinOutStates[3];//FanOut;
       seclightSW.state = PinOutStates[4];//secLightOut;
@@ -475,7 +475,7 @@ void outputStates() {
   //here output chan 4 with indexOfSunrise. use a cute sunset palette !
     if (IOstates[0][4] != 0) { //IOstates for sunset is ON, do the sunset
   for (int i = 0; i < NUM_LEDS; i++) {
-    leds[i] = ColorFromPalette(sunrisePal, indexOfSunrise, 128 + indexOfSunrise / 2, LINEARBLEND);
+    leds[i] = ColorFromPalette(sunrisePal, indexOfSunrise, 150 + indexOfSunrise / 4, LINEARBLEND);
       }
     }
     else { //LEDs OFF
@@ -543,13 +543,14 @@ void readFromFS(int IOchan) {
       index++;
       }
     }
-
+/*
   Serial.println("Data read from " + fileName + ":");
   for (int i = 0; i < 288; i++) {
     Serial.print(IOstates[i][IOchan]);
     Serial.print(" ");
     }
   Serial.println();
+  */
   }
 
 void readDurationFromFS() {
@@ -815,7 +816,6 @@ void drawTimeLine() {
           findIndexOfSunrise(a * 5);
           if (indexOfSunrise != 0 && indexOfSunrise != 255) {
             tft.drawFastVLine(a + (tft.width() - 288) / 2, timeLine_Y + chan * 11 + 2, 6, (indexOfSunrise / 10+6 << 11) | (0 << 5) | 0);
-            Serial.println(indexOfSunrise);
             }
           }
           }
@@ -833,6 +833,14 @@ void drawSpecTimeLine(int page) { //the timelines for each output settings
       tft.fillRect(a + (tft.width() - 288) / 2, timeLine_Y + 14, IOstates[a][page] / 60 / 5, 2, IODcolors[page]);
 //then draw the starting line
       tft.drawFastVLine(a + (tft.width() - 288) / 2, timeLine_Y + 10, 10, IOcolors[page]);
+      }
+    }
+  if (page == 4) { //sunset page
+    if (IOstates[0][page] != 0) {
+      tft.setTextColor(TFT_BLACK);
+      tft.setTextDatum(TC_DATUM);
+      tft.drawString("S U N S E T  A C T I V E", tft.width() / 2, timeLine_Y + 12, 1);
+      tft.setTextColor(TEXT_COLOR);
       }
     }
   }
@@ -992,7 +1000,7 @@ void drawSplash(int p) {  // draw the splash coresponding to the page
         }
       }
 
-    drawTimeStringCursor(avgX);
+   if(page-3 != 4) drawTimeStringCursor(avgX); //dont draw the cursor on sunset page
     int defaultDuration = 150; //the default timer for settings, roughly 5min
     drawDuration(defaultDuration); //start with default values
 
@@ -1087,13 +1095,9 @@ void toggleSW(int x, int y, bool state, const char* label) {
   static int B = 23;
 
   if (page != last_page) {
-    //state changed, nee to draw
-    Serial.println("redraw the button");
     }
 
   if (oldState != state) {
-    //state changed, nee to draw
-   // Serial.println("refreshed state");
     }
 
   if (disp != state * 10 + 1) {//do a cool animation
@@ -1257,7 +1261,6 @@ void loop() {
   if (rtc.getHour(true)==0 && rtc.getMinute() == 0 && rtc.getSecond() < 5) {//daily refresh
     }
 
-  
   static uint32_t lastTime = 0;  // holds its value after every iteration of loop
   if (millis() - lastTime >= 20000 || lastTime == 0) {  // read sensor every X milliseconds
     lastTime = millis(); //reset the last time TS
@@ -1382,15 +1385,16 @@ void loop() {
       tft.setTextDatum(TL_DATUM);
       tft.setTextColor(TEXT_COLOR, BACKGROUND_COLOR);
       tft.drawString(getHourMin(), 2, 2, 1);
-      //draw a triangle to show the time on the timeline
-      tft.fillRect(10, timeLine_Y - 10, tft.width() - 20, 5, BACKGROUND_COLOR);//errase cursors
-      tft.fillTriangle(minOfDay() / 5 + 16, timeLine_Y - 5, minOfDay() / 5 + 16 - 3, timeLine_Y - 5 - 3, minOfDay() / 5 + 16 + 3, timeLine_Y - 5 - 3, TEXT_COLOR); //draw cursor
-      tft.setTextDatum(BC_DATUM);
-      tft.setTextColor(TEXT_COLOR,BACKGROUND_COLOR);
-      tft.drawString("now", minOfDay() / 5 + 16, timeLine_Y - 5 - 4, 1);
+      if (page - 3 != 4) {//ignore for the page sunset
+        //draw a triangle to show the time on the timeline
+        tft.fillRect(10, timeLine_Y - 10, tft.width() - 20, 5, BACKGROUND_COLOR);//errase cursors
+        tft.fillTriangle(minOfDay() / 5 + 16, timeLine_Y - 5, minOfDay() / 5 + 16 - 3, timeLine_Y - 5 - 3, minOfDay() / 5 + 16 + 3, timeLine_Y - 5 - 3, TEXT_COLOR); //draw cursor
+        tft.setTextDatum(BC_DATUM);
+        tft.setTextColor(TEXT_COLOR, BACKGROUND_COLOR);
+        tft.drawString("now", minOfDay() / 5 + 16, timeLine_Y - 5 - 4, 1);
+        }
       }
     }
-  // delay(25);
 
   last_page = page;  // updating the last page, for comparison
   /////////// touch detection routine ///////////////
@@ -1438,7 +1442,7 @@ void loop() {
             t_y > pumpSW.y - 9 &&
             t_x < pumpSW.x + 20 &&
             t_x > pumpSW.x - 20) { //fan toggle Switch touched
-            Serial.println("pump Switch touched");
+           // Serial.println("pump Switch touched");
             if (PinOutStates[1] == 0) { //we were OFF, do what is needed to switch ON
             IOtimeStamps[1] = millis();//set the timestamp
             IOdurations[1] = 3600 / 4; //set the duration
