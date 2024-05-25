@@ -89,7 +89,7 @@ float Maxdurations[5] = { //max duration for each parameters, in h
     4/*pump*/,
     2/*mist*/,
     1/*fan*/,
-    1/*unset*/
+    8/*unset*/
     };
 
 #define SunriseWinter 421 //the min of day of sunrise on dec 21
@@ -97,13 +97,14 @@ float Maxdurations[5] = { //max duration for each parameters, in h
 #define SunsetWinter 1009 //the min of day of sunset on dec 21
 #define SunsetSummer 1154 //the min of day of sunset on jun 21
 
-#define Pin_Fan 5
-#define Pin_Fan 5
-#define Pin_Fan 5
-#define Pin_Fan 5
-#define Pin_Fan 5
 
 int Out_Pin[5] = { 12,13,14,16,17 }; //pins for all the outputs
 
 #define NUM_LEDS 11
-#define DATA_PIN 3
+#define DATA_PIN 27
+
+//how long the sunrise/sunset will bleed into the main light being ON
+//I do this to prevent a sudden OFF, few ms of darkness,
+//then main light ON. because the main light may take a vew ms
+//to turn ON. it's purely an aesthetic thing
+#define SunRise_Offset_After_Light 6 //in min

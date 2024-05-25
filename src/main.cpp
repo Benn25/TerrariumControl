@@ -45,13 +45,16 @@ char const* HoldMonth[] = {
 // Sunrise color palette stored in PROGMEM
 DEFINE_GRADIENT_PALETTE(sunrisePalette) {
   0, 0, 0, 0,   // Black (night)
+    20, 6, 4, 20,  // super deep purple/blue
     32, 42, 10, 127,  // Deep purple/blue
     64, 255, 71, 29,  // Deep red/orange
     96, 255, 153, 10,  // Orange
     128, 255, 223, 35,  // Bright yellow
     160, 255, 251, 214,  // Light yellow
-    192, 255, 255, 255,  // White
-    255, 255, 255, 255   // White (day)
+    225, 255, 255, 255,  // White
+    249, 25, 15, 15,   // kill
+    254, 0, 0, 0,   // kill
+    255, 0, 0, 0   // kill
   };
 
 // Define the palette
@@ -133,7 +136,7 @@ int SunriseMin;
 int SunsetMin;
 int IOdurations[5]={}; //all the ON durations, dynamically change depending on the settings of IOstates[]
 int indexOfSunrise; //the state of sunrise/sunset. on a palette going from blue/black then red/tellow then white
-int SunriseLen = 60; //duration of sunrise and sunset, in min
+int SunriseLen = 120; //duration of sunrise and sunset, in min
 int minOfLightON; //the minute on day the light will turn on
 int minOfLightOFF; //same for off
 
@@ -407,7 +410,8 @@ void findLightEnd() {
   for (int a = 0; a < 288; a++) {
     if (IOstates[a][0] != 0) {
       minOfLightON = a * 5;
-      minOfLightOFF = a*5 + IOstates[a][0]/60;  
+      minOfLightOFF = a * 5 + IOstates[a][0] / 60;
+      Serial.printf("light ON : %i    -   light OFF : %i \n",minOfLightON, minOfLightOFF);
       break;
       }
     }
@@ -415,14 +419,18 @@ void findLightEnd() {
   
   }
 
-void findIndexOfSunrise() {
-  if (minOfDay() < (minOfLightON + minOfLightOFF)/2) {//before light ON, need to ramp up the sunrise
-    indexOfSunrise = minOfDay() - (minOfLightON - SunriseLen + 6);
-    indexOfSunrise = constrain(map(indexOfSunrise,0,SunriseLen,0,255),0,255);//map and clamp the index from 0 to 255
+void findIndexOfSunrise(int minToCheck) {
+  if (minToCheck < (minOfLightON + minOfLightOFF)/2) {//before light ON, need to ramp up the sunrise
+    indexOfSunrise = minToCheck - (minOfLightON - SunriseLen + SunRise_Offset_After_Light);
+    indexOfSunrise *= 60; //convert to sec to increase steps
+    indexOfSunrise += rtc.getSecond(); //add the sec of the current min
+    indexOfSunrise = constrain(map(indexOfSunrise, 0, SunriseLen*60, 0, 255), 0, 255);//map and clamp the index from 0 to 255
     }
   else { //evening version
-    indexOfSunrise = minOfDay() - minOfLightOFF + 6;
-    indexOfSunrise = constrain(map(indexOfSunrise, 0, SunriseLen, 255, 0),0,255);
+    indexOfSunrise = minToCheck - minOfLightOFF + SunRise_Offset_After_Light;
+    indexOfSunrise *= 60; //convert to sec to increase steps
+    indexOfSunrise += rtc.getSecond(); //add the sec of the current min
+    indexOfSunrise = constrain(map(indexOfSunrise, 0, SunriseLen * 60, 255, 0), 0, 255);
     }
   }
 
@@ -431,23 +439,23 @@ void outputStates() {
   for (int IO = 0; IO < 5; IO++) {
     //first, switch ON if needed:
     if (rtc.getMinute() % 5 == 0 && rtc.getSecond() < 5) { //check for 5 sec every 5 min if we need to activate something
-      if (IOstates[minOfDay()/5][IO] != 0) { //if a timestamp is set for this time of the day
+      if (IOstates[minOfDay() / 5][IO] != 0) { //if a timestamp is set for this time of the day
         IOtimeStamps[IO] = millis();//reset the timestamps
-        IOdurations[IO] = IOstates[minOfDay()/5][IO]; //set the corresponding duration in ms
+        IOdurations[IO] = IOstates[minOfDay() / 5][IO]; //set the corresponding duration in ms
         PinOutStates[IO] = HIGH; //put this pin ON
-      Serial.print("pump duration : ");
-      Serial.println(IOstates[minOfDay() / 5][1]);
+        //Serial.print("pump duration : ");
+        //Serial.println(IOstates[minOfDay() / 5][1]);
         }
       }
 
     //next, check if need to switch OFF
-    if (IOtimeStamps[IO] + (IOdurations[IO]*1000) < millis() && PinOutStates[IO] == HIGH) { //if ON and times up
+    if (IOtimeStamps[IO] + (IOdurations[IO] * 1000) < millis() && PinOutStates[IO] == HIGH) { //if ON and times up
       PinOutStates[IO] = LOW; //put the pin OFF
       Serial.print("order to go off on : ");
       Serial.println(IO);
       }
-    
-    
+
+
     if (PinOutStates[IO] != OldPinOutStates[IO]) { //if there was a change in state, update the toggle switch
       digitalWrite(Out_Pin[IO], PinOutStates[IO]); //switch ON or OFF the needed pins
       Serial.print("a change in state was detected in IO : ");
@@ -463,12 +471,23 @@ void outputStates() {
       }
     }
 
-  findIndexOfSunrise();
+  findIndexOfSunrise(minOfDay());
   //here output chan 4 with indexOfSunrise. use a cute sunset palette !
-for(int i = 0; i < NUM_LEDS; i++) {
-    leds[i] = ColorFromPalette(sunrisePal, indexOfSunrise, 255, LINEARBLEND);
-  }
-FastLED.show();
+    if (IOstates[0][4] != 0) { //IOstates for sunset is ON, do the sunset
+  for (int i = 0; i < NUM_LEDS; i++) {
+    leds[i] = ColorFromPalette(sunrisePal, indexOfSunrise, 128 + indexOfSunrise / 2, LINEARBLEND);
+      }
+    }
+    else { //LEDs OFF
+      fill_solid(leds, NUM_LEDS, CRGB::Black);
+      }
+    
+    EVERY_N_SECONDS(2) {
+      Serial.printf("the index of sunrise is : %i /255 \n", indexOfSunrise);
+      Serial.printf("duration of sunrise is : %i min \n", SunriseLen);
+      }
+    
+    FastLED.show();
   }
 
 void saveInFS(int IOchan) {
@@ -532,6 +551,28 @@ void readFromFS(int IOchan) {
     }
   Serial.println();
   }
+
+void readDurationFromFS() {
+  // Create a file name for the current IOchan
+  String fileName = "/SunsetDuration.txt";
+
+  // Open the file for reading
+  File file = LittleFS.open(fileName, FILE_READ);
+
+  if (!file) {
+    Serial.println("Failed to open file for reading: " + fileName);
+    return;
+    }
+  // Read and parse the file contents
+  String content = file.readString();
+  file.close();
+
+  SunriseLen = content.toInt();
+  Serial.println("Data read from " + fileName + ":");
+    Serial.println(SunriseLen);
+  
+  }
+
 
 void saveDate() {
   // Get current date and time
@@ -752,7 +793,6 @@ void drawTags(int x) {  // draw the values labels on the graph
 
 void drawTimeLine() {
   tft.fillRect((tft.width() - 288) / 2, timeLine_Y, 288, 5 * 11, TFT_BLACK); //errase the timeline
-  //int barCol;
 
   for (int hour = 0; hour < 24; hour++) {
     // Calculate x position of the hour label
@@ -763,21 +803,25 @@ void drawTimeLine() {
 
   for (int a = 0; a < 288; a++) { //draw the timeline of the day, min by min
     for (int chan = 0; chan < 5; chan++) {
-      //              IOstates[a][chan] == 1 ? barCol = IOcolors[chan] : barCol = TFT_BLACK;
       if (IOstates[a][chan]) {
-        //tft.drawFastVLine(a + (tft.width() - 288) / 2, timeLine_Y + chan * 3, 3, barCol);
-        tft.drawRect(a + (tft.width() - 288) / 2, timeLine_Y + chan * 11 + 2, IOstates[a][chan] / 60 / 5, 2, IODcolors[chan]);
-        tft.drawRect(a + (tft.width() - 288) / 2, timeLine_Y + chan * 11, 2, 6, IOcolors[chan]);
-        }
-
-
-      /*
-      if (IOstates[a][chan] == 2) {
-        tft.drawPixel(a + (tft.width() - 288) / 2, timeLine_Y + chan * 11 + 1, IODcolors[chan]);
-        }
-*/
+        if (chan != 4) {//first, the regular OI
+          //first draw the duration line
+          tft.drawRect(a + (tft.width() - 288) / 2, timeLine_Y + chan * 11 + 2 + 2, IOstates[a][chan] / 60 / 5, 2, IODcolors[chan]);
+          //next draw the start bar
+          tft.drawRect(a + (tft.width() - 288) / 2, timeLine_Y + chan * 11 + 2, 1, 6, IOcolors[chan]);
+          }
+        else {//now, the special line, for the sunset
+          //draw lines at the locations corressponding to the sunrise and sunset
+          findIndexOfSunrise(a * 5);
+          if (indexOfSunrise != 0 && indexOfSunrise != 255) {
+            tft.drawFastVLine(a + (tft.width() - 288) / 2, timeLine_Y + chan * 11 + 2, 6, (indexOfSunrise / 10+6 << 11) | (0 << 5) | 0);
+            Serial.println(indexOfSunrise);
+            }
+          }
+          }
       }
     }
+  findIndexOfSunrise(minOfDay());
   }
 
 void drawSpecTimeLine(int page) { //the timelines for each output settings
@@ -823,7 +867,7 @@ void drawSplash(int p) {  // draw the splash coresponding to the page
     tft.drawString("now", tft.width() - 2, LowGraphPos + 4, 1);
     tft.drawFastHLine(0, LowGraphPos + 1, 319, TFT_MIDGREY);
     drawGraph();
-    findLightEnd(); //refresh the data for light OFF, it may have been changed
+    //findLightEnd(); //refresh the data for light OFF, it may have been changed
     }
 
   if (p == 1) { //////////////////////////////////// Splash on option screen
@@ -873,7 +917,7 @@ void drawSplash(int p) {  // draw the splash coresponding to the page
     //OK button bien phat
     drawOKandCancel();
 
-    tft.setTextColor(TEXT_COLOR);
+    //tft.setTextColor(TEXT_COLOR);
     tft.setTextDatum(TC_DATUM);
 
     for (int hour = 0; hour < 24; hour++) {
@@ -1184,17 +1228,20 @@ void setup() {
   for (int a = 0; a < 5; a++) {
     readFromFS(a);
     delay(20); //sanity delay
-
     pinMode(Out_Pin[a], OUTPUT); //initialise the pins for outputs
-
-    FastLED.addLeds<WS2812B, DATA_PIN, RGB>(leds, NUM_LEDS);  // GRB ordering is typical
-
     }
+  
+  FastLED.addLeds<WS2811, DATA_PIN, GRB>(leds, NUM_LEDS);  // GRB ordering is typical
+
+  fill_solid(leds, NUM_LEDS, CRGB::Black);
+  FastLED.show();
 
   /////for debug ////
   findLightEnd();
-  findIndexOfSunrise();
+  findIndexOfSunrise(minOfDay());
   drawSplash(page);  // draw the static shit of the current
+
+  readDurationFromFS();
   }
 
 void loop() {
@@ -1203,6 +1250,7 @@ void loop() {
     dispHum = 0;                       // just for the style, it restarts the meters animation
     dispTemp = 0;                      // juste for the style
     tft.fillScreen(BACKGROUND_COLOR);  // errase all
+    findLightEnd(); //refresh the data for light OFF, it may have been changed
     drawSplash(page);  // draw the splash of the coresponding page
     }
 
@@ -1334,6 +1382,12 @@ void loop() {
       tft.setTextDatum(TL_DATUM);
       tft.setTextColor(TEXT_COLOR, BACKGROUND_COLOR);
       tft.drawString(getHourMin(), 2, 2, 1);
+      //draw a triangle to show the time on the timeline
+      tft.fillRect(10, timeLine_Y - 10, tft.width() - 20, 5, BACKGROUND_COLOR);//errase cursors
+      tft.fillTriangle(minOfDay() / 5 + 16, timeLine_Y - 5, minOfDay() / 5 + 16 - 3, timeLine_Y - 5 - 3, minOfDay() / 5 + 16 + 3, timeLine_Y - 5 - 3, TEXT_COLOR); //draw cursor
+      tft.setTextDatum(BC_DATUM);
+      tft.setTextColor(TEXT_COLOR,BACKGROUND_COLOR);
+      tft.drawString("now", minOfDay() / 5 + 16, timeLine_Y - 5 - 4, 1);
       }
     }
   // delay(25);
@@ -1500,7 +1554,7 @@ void loop() {
             }
           if (t_y > 170 && t_y < 200) { //touch on the slider timespan zone
 
-            drawDuration(t_x);
+            drawDuration(t_x); //timer is updated ehre
 
             }
           while (tft.getTouch(&t_x, &t_y) && t_y > timeLine_Y && t_y < timeLine_Y + 10 + 25) { //if touch on the timeline
@@ -1526,7 +1580,7 @@ void loop() {
               avgY = sumY / count;
               }
 
-            drawTimeStringCursor(avgX);
+            if (page - 3 != 4) drawTimeStringCursor(avgX);//draw the cursor except on page sunset
             }
 
           if (t_x > nuriBut_X - nuribut_Wid / 2 && t_x < nuriBut_X + nuribut_Wid / 2 &&
@@ -1550,8 +1604,15 @@ void loop() {
             t_y > nuriBut_Y - nuribut_Hei / 2 && t_y < nuriBut_Y + nuribut_Hei / 2) {  // check if the set button is pressed
             while (tft.getTouch(&t_x, &t_y)) {  // screen is pressed, stop everything to debounce
               }
-            nuristate == 0 ? IOstates[avgX - 16][page - 3] = 0 : IOstates[avgX - 16][page - 3] = timer;
-            //            IOstates[avgX - 16][page - 3] = nuristate;
+            if (page - 3 != 4) {//if the page is not the sunset one
+              nuristate == 0 ? IOstates[avgX - 16][page - 3] = 0 : IOstates[avgX - 16][page - 3] = timer;
+              }
+            else {//sunset page, save all the array as 1 if sunset ON, 0 if off
+              for (int a = 0; a < 288; a++) {
+                SunriseLen = timer /60; //set the sunrise/sunset time 
+                IOstates[a][page - 3] = nuristate; //put everything in the array as 0 or 1
+                }
+              }
             }
 
           drawSpecTimeLine(page - 3);
@@ -1566,7 +1627,25 @@ void loop() {
             page = 0; //return to main
             }
           if (page > 2) {
-            saveInFS(page - 3); //save the settings of the page
+            if (page - 3 == 4) { //sunset page, save the sunset diuration
+              // Create a file name for the current IOchan
+              String fileName = "/SunsetDuration.txt";
+              // Open the file for writing
+              File file = LittleFS.open(fileName, FILE_WRITE);
+              if (!file) {
+                Serial.println("Failed to open file for writing: " + fileName);
+                return;
+                }
+              // Write the data to the file
+                file.print(SunriseLen);
+              //  file.println();  // New line after each column
+              // Close the file
+              file.close();
+              Serial.println("Data saved to " + fileName);
+              }
+            else {
+              saveInFS(page - 3); //save the settings of the page
+              }
             page = 2;  // return to Settings screen
             }
           else {
