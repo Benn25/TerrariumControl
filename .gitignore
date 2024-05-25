@@ -35,3 +35,6 @@
 *.exe
 *.out
 *.app
+
+* linguist-vendored
+src/*.cpp linguist-vendored=false
