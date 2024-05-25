@@ -9,3 +9,11 @@
 # Optionally, you can also exclude certain directories from language statistics
 docs/* linguist-documentation=true
 examples/* linguist-vendored=true
+
+# Specify that .h files should be treated as C++
+*.h linguist-language=C++
+
+# Optionally, you can specify other file types or configurations
+*.cpp linguist-language=C++
+*.ino linguist-language=C++
+*.hpp linguist-language=C++
