@@ -8,6 +8,8 @@
 #define simpleBut_W 58
 #define simpleBut_H 30
 
+#define IOBUTT_OFFSET 45
+
 ///////buttons on the specific settings pages
 #define nuribut_Wid  60
 #define nuribut_Hei  35
@@ -20,7 +22,7 @@
 #define mettersYpos 197  // Y position of the round metters
 
 #define MAXBL 255    // max backlight
-#define MINBL 60     // min backlight
+#define MINBL 250//60     // min backlight
 #define max_temp 45  // maximum reachable temperature
 #define FanWorkTime 60 //duration you want the fan to work for
 #define timeLine_Y 45 //Y position of the timeline for settings

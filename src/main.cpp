@@ -139,6 +139,7 @@ int indexOfSunrise; //the state of sunrise/sunset. on a palette going from blue/
 int SunriseLen = 120; //duration of sunrise and sunset, in min
 int minOfLightON; //the minute on day the light will turn on
 int minOfLightOFF; //same for off
+bool linkMistPump = 1; //activate pump when mist is ON?
 
 //timestamps :
 unsigned long fanTS;
@@ -199,7 +200,7 @@ int IOstates[288][5] = {}; //settings data, when to light up, when to start the 
 //order, from top in the timeline : light, pump, mist, fan, secLight
 
 int graphLine[320][6] = {};  // building the array that saves the data for the graph
-// 0:temp, 1:hygro, 2:fan, 3:light, 4: mist, 5: secondary light
+// 0:temp, 1:hygro, 2:light, 3:pump, 4: mist, 5: fan
 
 void touch_calibrate() {
 
@@ -436,27 +437,42 @@ void findIndexOfSunrise(int minToCheck) {
 
 void outputStates() {
   //first, check if need to switch ON
-  for (int IO = 0; IO < 5; IO++) {
+  for (int IO = 0; IO < 4; IO++) {
     //first, switch ON if needed:
-    if (rtc.getMinute() % 5 == 0 && rtc.getSecond() < 5) { //check for 5 sec every 5 min if we need to activate something
-      if (IOstates[minOfDay() / 5][IO] != 0) { //if a timestamp is set for this time of the day
+    if (rtc.getMinute() % 5 == 0 && rtc.getSecond() < 6) { //check for 5 sec every 5 min if we need to activate something
+      if (IOstates[minOfDay() / 5][IO] != 0 && PinOutStates[IO] == 0) { //if a duration is set for this time of the day and state is OFF
         IOtimeStamps[IO] = millis();//reset the timestamps
         IOdurations[IO] = IOstates[minOfDay() / 5][IO]; //set the corresponding duration in ms
         PinOutStates[IO] = HIGH; //put this pin ON
-        //Serial.print("pump duration : ");
-        //Serial.println(IOstates[minOfDay() / 5][1]);
+        Serial.print("order to go ON on : ");
+        Serial.print(IO);
+        Serial.print("   for sec: ");
+        Serial.println(IOstates[minOfDay() / 5][IO]);
         }
       }
+    if (PinOutStates[IO]) {
+      graphLine[1][IO + 2] = 1; //write the states of every outputs for the graph on main page
+      }
+      graphLine[0][IO + 2] = 0;
 
-    //next, check if need to switch OFF
-    if (IOtimeStamps[IO] + (IOdurations[IO] * 1000) < millis() && PinOutStates[IO] == HIGH) { //if ON and times up
+      //next, check if need to switch OFF
+      if (IOtimeStamps[IO] + (IOdurations[IO] * 1000) < millis() && PinOutStates[IO] == HIGH) { //if ON and times up
       PinOutStates[IO] = LOW; //put the pin OFF
       Serial.print("order to go off on : ");
       Serial.println(IO);
       }
 
 
-    if (PinOutStates[IO] != OldPinOutStates[IO]) { //if there was a change in state, update the toggle switch
+    if (PinOutStates[IO] != OldPinOutStates[IO]) {//if there was a change in state, update the toggle switch
+if(IO == 2){//to do only on mist turn
+      if (linkMistPump == 1 && PinOutStates[2] == 1 && PinOutStates[1] == 0) {//mist is ON, but pump OFF, switch on the pump if the link is ON
+        Serial.println("special activation of pump due to mist link");
+        PinOutStates[1] = 1; //activate pump
+        IOtimeStamps[1] = millis();//reset the pump timestamp
+        IOdurations[1] = IOstates[minOfDay() / 5][2]; //set the same duration as mist for pump
+        }
+        }
+      
       digitalWrite(Out_Pin[IO], PinOutStates[IO]); //switch ON or OFF the needed pins
       Serial.print("a change in state was detected in IO : ");
       Serial.println(IO);
@@ -467,26 +483,27 @@ void outputStates() {
      // Serial.println(PinOutStates[1]);
       mistSW.state = PinOutStates[2];//mistOut;
       FanSW.state = PinOutStates[3];//FanOut;
-      seclightSW.state = PinOutStates[4];//secLightOut;
-      }
+     // seclightSW.state = PinOutStates[4];//secLightOut;
+      }    
     }
+
 
   findIndexOfSunrise(minOfDay());
   //here output chan 4 with indexOfSunrise. use a cute sunset palette !
     if (IOstates[0][4] != 0) { //IOstates for sunset is ON, do the sunset
   for (int i = 0; i < NUM_LEDS; i++) {
-    leds[i] = ColorFromPalette(sunrisePal, indexOfSunrise, 150 + indexOfSunrise / 4, LINEARBLEND);
+    leds[i] = ColorFromPalette(sunrisePal, indexOfSunrise, 80 + indexOfSunrise / 4, LINEARBLEND);
       }
     }
     else { //LEDs OFF
       fill_solid(leds, NUM_LEDS, CRGB::Black);
       }
-    
+    /*
     EVERY_N_SECONDS(2) {
       Serial.printf("the index of sunrise is : %i /255 \n", indexOfSunrise);
       Serial.printf("duration of sunrise is : %i min \n", SunriseLen);
       }
-    
+    */
     FastLED.show();
   }
 
@@ -573,7 +590,6 @@ void readDurationFromFS() {
     Serial.println(SunriseLen);
   
   }
-
 
 void saveDate() {
   // Get current date and time
@@ -699,8 +715,6 @@ void drawGraph() {
 //erase the graph
   tft.fillRect(0, LowGraphPos - GraphH, tft.width(), GraphH, BLACK);
   for (int a = 0; a < 319; a++) {
-    // tft.drawLine(319 - a, LowGraphPos, 319 - a, LowGraphPos - GraphH,
-    //  BLACK);  // clear the graph line by line
     if (a % 20 == 0)
       tft.drawLine(319 - a, LowGraphPos, 319 - a, LowGraphPos - GraphH,
       TFT_MIDGREY);  // add vert lines each hour
@@ -712,7 +726,6 @@ void drawGraph() {
       tft.drawLine(319 - a, LowGraphPos, 319 - a,
       LowGraphPos - map(graphLine[a][0], 0, max_temp, 0, GraphH),
       IODcolors[0]);  // draw the fill first (for temp)
-    //  tft.drawPixel(314 - a, 120 - graphLine[a][1], HYGRO_COLOR);
     }
   for (int a = 0; a < 319; a++) {  // draw the lines for temp and hygro
     if (graphLine[a][0] != 0)
@@ -727,7 +740,16 @@ void drawGraph() {
       319 - (a + 1),
       LowGraphPos - map(graphLine[a + 1][1], 0, 100, 0, GraphH),
       HYGRO_COLOR);
-    }
+    //last, draw the lines of devices activations
+    for (int l = 0; l < 4; l++) {
+      if (graphLine[a][l+2]) {
+        tft.drawPixel(319 - a, LowGraphPos - 5 - l * 2, IOcolors[l]);
+        tft.drawPixel(319 - a, LowGraphPos - 4 - l * 2, TFT_BLACK);
+        }
+      }
+      }
+
+  
   // draw the max labels
   tft.setTextDatum(TC_DATUM);
   tft.setTextColor(HYGRO_COLOR, BLACK);
@@ -940,17 +962,31 @@ void drawSplash(int p) {  // draw the splash coresponding to the page
       if (hour % 1 == 0 && hour != 0) tft.drawFastVLine(x + (tft.width() - 288) / 2, timeLine_Y + 10 * 6 - 5, 3, TFT_DARKGREY);
       }
     //draw the labels of the outputs
+    //draw the frame for the mist to pump link
+    tft.drawSmoothRoundRect(((tft.width() / 5) / 2 + (tft.width() / 5)) - 60 / 2-2,
+      (tft.height() - but_H - IOBUTT_OFFSET) - (32 + 2) / 2 - 2 - 15 - 2,
+      10, 10, (tft.width() / 5)*2-1, 32+4+20-2, TFT_MIDGREY, BACKGROUND_COLOR);
+    tft.fillSmoothRoundRect(((tft.width() / 5) / 2 + (tft.width() / 5)) - 60 / 2,
+      (tft.height() - but_H - IOBUTT_OFFSET) - 32 / 2 - 4 - 15 + 2,
+      (tft.width() / 5) * 2-4, 15, 8,linkMistPump==1 ? TFT_LIGHTGREY : TFT_MIDGREY, BACKGROUND_COLOR);
+
     tft.setTextDatum(MC_DATUM);
+    tft.setFreeFont(); //NG FF33 serif pourri, FSS9 too big, FM9 too long,  
+    tft.setTextColor(TEXT_COLOR);
+    tft.drawString("link to pump :", (tft.width() / 5) / 2 + (tft.width() / 5) + 16, (tft.height() - but_H - IOBUTT_OFFSET) - 2 - 25, 2);
+    tft.drawString(linkMistPump == 1 ? "ON" : "OFF", (tft.width() / 5) / 2 + (tft.width() / 5) + 75, (tft.height() - but_H - IOBUTT_OFFSET) - 2 - 24, 2);
+    
     tft.setFreeFont(FF21);
-    for (int a = 0; a < 5; a++) {
+    for (int a = 0; a < 5; a++) { //draw the IO buttons
       tft.fillSmoothRoundRect(((tft.width() / 5) / 2 + (tft.width() / 5) * a) - 60 / 2,
-        (tft.height() - but_H - 50) - 32 / 2,
+        (tft.height() - but_H - IOBUTT_OFFSET) - 32 / 2,
         60, 32, 8, TFT_LIGHTGREY, BACKGROUND_COLOR);
       tft.setTextColor(TEXT_COLOR);
-      tft.drawString(outLab[a], (tft.width() / 5) / 2 + (tft.width() / 5) * a, tft.height() - but_H - 50, 1);
+      tft.drawString(outLab[a], (tft.width() / 5) / 2 + (tft.width() / 5) * a, tft.height() - but_H - IOBUTT_OFFSET, 1);
       tft.setTextColor(IOcolors[a]);
-      tft.drawString(outLab[a], (tft.width() / 5) / 2 + (tft.width() / 5) * a - 1, tft.height() - but_H - 50 - 1, 1);
+      tft.drawString(outLab[a], (tft.width() / 5) / 2 + (tft.width() / 5) * a - 1, tft.height() - but_H - IOBUTT_OFFSET - 1, 1);
       }
+
     tft.setFreeFont();
     // draw a cute frame
     tft.drawSmoothRoundRect(4, timeLine_Y - 10, 6, 6, tft.width() - 8, 10 * 6 + 25, TFT_MIDGREY, BACKGROUND_COLOR);
@@ -1019,70 +1055,7 @@ void drawSplash(int p) {  // draw the splash coresponding to the page
 
     }
   }
-/*
-class classtoggleSW {
-public:
-  int x;
-  int y;
-  bool state;
-  const char* label;
-  int disp;
 
-  void drawTW() { //draw the toggleSW
-    static bool oldState = state;
-    static int augment = 2; //size to add to the contener to be bigger that the dot
-    static int rad = 7; //size of the round in px
-    static int interSpace = rad / 2 + 1;
-    static int wide = 4 * rad + interSpace + augment * 2; //wideness L to R(max)
-
-    static int minR = 20;
-    static int minG = 40;
-    static int minB = 28;
-
-    static int R = 28;
-    static int G = 25;
-    static int B = 10;
-
-    if (page != last_page) {
-      //state changed, nee to draw
-     // Serial.println("redraw the button");
-      }
-    if (oldState != state) {
-      //state changed, nee to draw
-     // Serial.println("refreshed state");
-      }
-    if (disp != state * 10 + 1 || page != last_page) {//do a cool animation
-      disp < state * 10 + 1 ? disp++ : disp--;
-      tft.setTextPadding(1);
-      tft.setTextDatum(CR_DATUM);
-      tft.setTextColor(INV_TEXT_COLOR);
-      //txt label
-      tft.fillSmoothRoundRect(x - wide / 2 - tft.drawString(label, x - rad * 2 - interSpace / 2 - 5, y + 1, 1) - 7,
-        y - rad - 2 + 4, wide + 1 + tft.drawString(label, 10, 10, 1), rad * 2 + augment * 2 + 1 - 8, rad + augment, TFT_MIDGREY, BACKGROUND_COLOR);
-      tft.drawString(label, x - rad * 2 - interSpace / 2 - 5, y + 1, 1);
-      //Serial.println(disp);
-      tft.setTextColor(TEXT_COLOR);
-      //tft.setFreeFont(TT1);
-      tft.setTextSize(1);
-      tft.fillSmoothRoundRect(x - wide / 2, y - rad - 2, wide + 1, rad * 2 + augment * 2 + 1, rad + augment,
-        ((map(disp, 1, 11, minR, R) << 11) |
-        (map(disp, 1, 11, minG, G) << 5) |
-        map(disp, 1, 11, minB, B)),
-        BACKGROUND_COLOR);
-
-      tft.setTextDatum(CR_DATUM);
-      if (disp > 8) tft.drawString("OFF", x + 2, y + 1, 1);
-      tft.setTextDatum(CL_DATUM);
-      if (disp < 3) tft.drawString("ON", x + 3, y + 1, 1);
-      tft.fillSmoothCircle(x - rad - interSpace / 2 + map(disp, 1, 11, 0, 2 * rad + interSpace), y, rad, TFT_LIGHTGREY,
-        ((map(disp, 1, 11, 8, 28) << 11) | (G << 5) | map(disp, 11, 1, 8, B) << 5));
-      tft.setFreeFont(GLCD);
-      tft.setTextSize(1);
-      }
-    oldState = state;
-    }
-  };
-*/
 void toggleSW(int x, int y, bool state, const char* label) {
   static bool oldState = state;
   static int augment = 2; //size to add to the contener to be bigger that the dot
@@ -1146,36 +1119,35 @@ void setup() {
 
   int ToggleSW_X = tft.width() / 2 + 20;
 
-  FanSW.x = ToggleSW_X + 28;
-  FanSW.y = LowGraphPos + 24 + 21 * 3;
+  FanSW.x = ToggleSW_X;
+  FanSW.y = LowGraphPos + 20;
   FanSW.state = FanOut;
   FanSW.label = "Fan";
   FanSW.disp = 0;
 
-  pumpSW.x = ToggleSW_X - 40;
-  pumpSW.y = LowGraphPos + 24 + 21 * 3;
+  mistSW.x = ToggleSW_X;
+  mistSW.y = LowGraphPos + 20 + 21 * 1;
+  mistSW.state = mistOut;
+  mistSW.label = "Mist";
+  mistSW.disp = 0;
+
+  pumpSW.x = ToggleSW_X;
+  pumpSW.y = LowGraphPos + 20 + 21 * 2;
   pumpSW.state = pumpOut;
   pumpSW.label = "Pump";
   pumpSW.disp = 0;
 
   lightSW.x = ToggleSW_X;
-  lightSW.y = LowGraphPos + 24 + 21 * 1;
+  lightSW.y = LowGraphPos + 20 + 21 *3;
   lightSW.state = lightOut;
   lightSW.label = "Light";
   lightSW.disp = 0;
 
   seclightSW.x = ToggleSW_X;
-  seclightSW.y = LowGraphPos + 24 + 21 * 2;
+  seclightSW.y = LowGraphPos + 20 + 21 * 2;
   seclightSW.state = secLightOut;
   seclightSW.label = "Sunset";
   seclightSW.disp = 0;
-
-  mistSW.x = ToggleSW_X;
-  mistSW.y = LowGraphPos + 24;
-  mistSW.state = mistOut;
-  mistSW.label = "Mist";
-  mistSW.disp = 0;
-
 
 //  rtc.setTime(00, 10, 22, 6, 5, 2024);  // 17th Jan 2021 15:24:30
 
@@ -1258,11 +1230,12 @@ void loop() {
     drawSplash(page);  // draw the splash of the coresponding page
     }
 
-  if (rtc.getHour(true)==0 && rtc.getMinute() == 0 && rtc.getSecond() < 5) {//daily refresh
+  if (rtc.getHour(true) == 0 && rtc.getMinute() == 0 && rtc.getSecond() < 5) {//daily refresh
+    getSunriseSunset(rtc.getDayofYear()); //refresh the time of real sunrise and sunset
     }
 
   static uint32_t lastTime = 0;  // holds its value after every iteration of loop
-  if (millis() - lastTime >= 20000 || lastTime == 0) {  // read sensor every X milliseconds
+  if (millis() - lastTime >= 20000 || lastTime == 0) {  // read sensor every X milliseconds, for 24 hours : 270000 
     lastTime = millis(); //reset the last time TS
     //also do very low refresh things
     // read DHT data every 2 sec here
@@ -1272,17 +1245,18 @@ void loop() {
     hum = constrain(hum, 0, 100);         // clamp values
     temp = constrain(temp, 0, max_temp);  // clamp values
     saveDate(); //save the time every once in a while
-    getSunriseSunset(rtc.getDayofYear()); //refresh the time of sunrise and sunset
     for (int a = 0; a < 319; a++) {  // record the new data as array
       if (a == 0) {
         graphLine[a][0] = temp;
         graphLine[a][1] = hum;
         }
       // slide the whole arrays
-      graphLine[319 - a][0] = graphLine[319 - (a + 1)][0];
-      graphLine[319 - a][1] = graphLine[319 - (a + 1)][1];
+      for (int s = 0; s < 6; s++) {
+        graphLine[319 - a][s] = graphLine[319 - (a + 1)][s];
+//        graphLine[319 - a][1] = graphLine[319 - (a + 1)][1];
+        }
       }
-    if (page == 0) {
+      if (page == 0) {
       drawGraph();// if we are on main page, refresh the graph
       }
     }
@@ -1330,7 +1304,7 @@ void loop() {
     pumpSW.drawTW();
     FanSW.drawTW();
     lightSW.drawTW();
-    seclightSW.drawTW();
+    //seclightSW.drawTW();
     mistSW.drawTW();
 
 
@@ -1520,7 +1494,7 @@ void loop() {
 
           for (int b = 0; b < 5; b++) {
             int butX = (tft.width() / 5) / 2 + (tft.width() / 5) * b;
-            int butY = (tft.height() - but_H - 50);
+            int butY = (tft.height() - but_H - IOBUTT_OFFSET);
             if (t_x > butX - 27 && t_x < butX + 27 && t_y > butY - 16 && t_y < butY + 16) { //visual feedback on button when press
               simpleBut(outLab[b], butX, butY, simpleBut_W, simpleBut_H, 0);
               page = 3 + b;
@@ -1531,6 +1505,29 @@ void loop() {
             else {
               }
             }
+          if (t_x > ((tft.width() / 5) / 2 + (tft.width() / 5)) - 60 / 2 &&
+            t_x < ((tft.width() / 5) / 2 + (tft.width() / 5)) - 60 / 2 + ((tft.width() / 5) * 2 - 4) &&
+            t_y >(tft.height() - but_H - IOBUTT_OFFSET) - 32 / 2 - 4 - 15 + 2 &&
+            t_y < (tft.height() - but_H - IOBUTT_OFFSET) - 32 / 2 - 4 - 15 + 2 + 15) { //visual feedback on link button when press
+            linkMistPump = !linkMistPump;
+
+            tft.fillSmoothRoundRect(((tft.width() / 5) / 2 + (tft.width() / 5)) - 60 / 2,
+              (tft.height() - but_H - IOBUTT_OFFSET) - 32 / 2 - 4 - 15 + 2,
+              (tft.width() / 5) * 2 - 4, 15, 8, linkMistPump == 1 ? TFT_LIGHTGREY : TFT_MIDGREY, BACKGROUND_COLOR);
+
+            tft.setTextDatum(MC_DATUM);
+            tft.setFreeFont(); //NG FF33 serif pourri, FSS9 too big, FM9 too long,  
+            tft.setTextColor(TEXT_COLOR);
+            tft.drawString("link to pump :", (tft.width() / 5) / 2 + (tft.width() / 5) + 16, (tft.height() - but_H - IOBUTT_OFFSET) - 2 - 25, 2);
+            tft.drawString(linkMistPump == 1 ? "ON" : "OFF", (tft.width() / 5) / 2 + (tft.width() / 5) + 75, (tft.height() - but_H - IOBUTT_OFFSET) - 2 - 24, 2);
+
+
+            
+            while (
+              tft.getTouch(&t_x, &t_y)) {  // screen is pressed, stop everything
+              }
+            }
+
           }// emd of to do when pressed
         }
       if (page > 2) { // setting for the pump
