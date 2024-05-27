@@ -714,7 +714,7 @@ void drawGraph() {
   //Serial.println("enrtering the drawgraph funct");
 //erase the graph
   tft.fillRect(0, LowGraphPos - GraphH, tft.width(), GraphH, BLACK);
-  for (int a = 0; a < 319; a++) {
+  for (int a = 0; a < 320; a++) {
     if (a % 20 == 0)
       tft.drawLine(319 - a, LowGraphPos, 319 - a, LowGraphPos - GraphH,
       TFT_MIDGREY);  // add vert lines each hour
@@ -725,26 +725,29 @@ void drawGraph() {
     if (graphLine[a][0] != 0)
       tft.drawLine(319 - a, LowGraphPos, 319 - a,
       LowGraphPos - map(graphLine[a][0], 0, max_temp, 0, GraphH),
-      IODcolors[0]);  // draw the fill first (for temp)
+      TFT_DARKGREY);  // draw the fill first (for temp)
     }
-  for (int a = 0; a < 319; a++) {  // draw the lines for temp and hygro
+  for (int a = 0; a < 320; a++) {  // draw the lines for temp and hygro only if there is non zero data
+    for (int p = 0; p < 2; p++) {
     if (graphLine[a][0] != 0)
       tft.drawLine(
-      319 - a, LowGraphPos - map(graphLine[a][0], 0, max_temp, 0, GraphH),
+      319 - a, LowGraphPos - map(graphLine[a][0], 0, max_temp, 0, GraphH)+p,
       319 - (a + 1),
-      LowGraphPos - map(graphLine[a + 1][0], 0, max_temp, 0, GraphH),
-      TEMP_COLOR);
-    if (graphLine[a][1] != 0)
-      tft.drawLine(319 - a,
-      LowGraphPos - map(graphLine[a][1], 0, 100, 0, GraphH),
-      319 - (a + 1),
-      LowGraphPos - map(graphLine[a + 1][1], 0, 100, 0, GraphH),
-      HYGRO_COLOR);
+      LowGraphPos - map(graphLine[a + 1][0], 0, max_temp, 0, GraphH)+p,
+      IODcolors[0]);
+      if (graphLine[a][1] != 0)
+        tft.drawLine(319 - a,
+        LowGraphPos - map(graphLine[a][1], 0, 100, 0, GraphH)+p,
+        319 - (a + 1),
+        LowGraphPos - map(graphLine[a + 1][1], 0, 100, 0, GraphH)+p,
+        IODcolors[2]);
+      }
     //last, draw the lines of devices activations
     for (int l = 0; l < 4; l++) {
       if (graphLine[a][l+2]) {
-        tft.drawPixel(319 - a, LowGraphPos - 5 - l * 2, IOcolors[l]);
-        tft.drawPixel(319 - a, LowGraphPos - 4 - l * 2, TFT_BLACK);
+        tft.drawPixel(319 - a, LowGraphPos - 5 - l * 3, IOcolors[l]);
+        tft.drawPixel(319 - a, LowGraphPos - 4 - l * 3, IOcolors[l]);
+        tft.drawPixel(319 - a, LowGraphPos - 3 - l * 3, TFT_BLACK);
         }
       }
       }
@@ -1235,29 +1238,31 @@ void loop() {
     }
 
   static uint32_t lastTime = 0;  // holds its value after every iteration of loop
-  if (millis() - lastTime >= 20000 || lastTime == 0) {  // read sensor every X milliseconds, for 24 hours : 270000 
+  if (millis() - lastTime >= 250000 || lastTime == 0) {  // read sensor every X milliseconds, for 24 hours : 270000 
     lastTime = millis(); //reset the last time TS
     //also do very low refresh things
     // read DHT data every 2 sec here
     mySensor.read();
-    hum = mySensor.getHumidity();
-    temp = mySensor.getTemperature();
-    hum = constrain(hum, 0, 100);         // clamp values
-    temp = constrain(temp, 0, max_temp);  // clamp values
+    int tempHum = mySensor.getHumidity();
+    float tempTemp = mySensor.getTemperature();
+    tempHum = constrain(tempHum, 0, 100);         // clamp values
+    tempTemp = constrain(tempTemp, 0, max_temp);  // clamp values
+    if (tempHum != 0) hum = tempHum; //update temp and hum anly of non zero (sometimes it bugs and goes to 0)
+    if (tempTemp != 0) temp = tempTemp;
     saveDate(); //save the time every once in a while
-    for (int a = 0; a < 319; a++) {  // record the new data as array
-      if (a == 0) {
-        graphLine[a][0] = temp;
-        graphLine[a][1] = hum;
-        }
-      // slide the whole arrays
+        graphLine[0][0] = temp; //record the temp and put it in the first place of the array 
+        graphLine[0][1] = hum; //same for hum
+
+      if (page == 0) {
+      drawGraph();// if we are on main page, refresh the graph
+      }
+
+        for (int a = 0; a < 320; a++) {
+          // slide the whole arrays
       for (int s = 0; s < 6; s++) {
         graphLine[319 - a][s] = graphLine[319 - (a + 1)][s];
 //        graphLine[319 - a][1] = graphLine[319 - (a + 1)][1];
         }
-      }
-      if (page == 0) {
-      drawGraph();// if we are on main page, refresh the graph
       }
     }
   // fluidify the move of the metters
