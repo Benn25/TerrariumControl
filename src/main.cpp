@@ -724,16 +724,16 @@ void drawGraph() {
 
     if (graphLine[a][0] != 0)
       tft.drawLine(319 - a, LowGraphPos, 319 - a,
-      LowGraphPos - map(graphLine[a][0], 0, max_temp, 0, GraphH),
-      TFT_DARKGREY);  // draw the fill first (for temp)
+      LowGraphPos - map(graphLine[a][0], 0, max_temp*10, 0, GraphH),
+      a % 20 == 0 ? TFT_OFFWHITE : TFT_LIGHTGREY);  // draw the fill first (for temp)
     }
   for (int a = 0; a < 320; a++) {  // draw the lines for temp and hygro only if there is non zero data
     for (int p = 0; p < 2; p++) {
     if (graphLine[a][0] != 0)
       tft.drawLine(
-      319 - a, LowGraphPos - map(graphLine[a][0], 0, max_temp, 0, GraphH)+p,
+      319 - a, LowGraphPos - map(graphLine[a][0], 0, max_temp*10, 0, GraphH)+p,
       319 - (a + 1),
-      LowGraphPos - map(graphLine[a + 1][0], 0, max_temp, 0, GraphH)+p,
+      LowGraphPos - map(graphLine[a + 1][0], 0, max_temp*10, 0, GraphH)+p,
       IODcolors[0]);
       if (graphLine[a][1] != 0)
         tft.drawLine(319 - a,
@@ -1238,15 +1238,15 @@ void loop() {
     }
 
   static uint32_t lastTime = 0;  // holds its value after every iteration of loop
-  if (millis() - lastTime >= 250000 || lastTime == 0) {  // read sensor every X milliseconds, for 24 hours : 270000 
+  if (millis() - lastTime >= 5000 || lastTime == 0) {  // read sensor every X milliseconds, for 24 hours : 270000 
     lastTime = millis(); //reset the last time TS
     //also do very low refresh things
     // read DHT data every 2 sec here
     mySensor.read();
     int tempHum = mySensor.getHumidity();
-    float tempTemp = mySensor.getTemperature();
+    float tempTemp = mySensor.getTemperature()*10; //multiply by 4 to increase precision for the int
     tempHum = constrain(tempHum, 0, 100);         // clamp values
-    tempTemp = constrain(tempTemp, 0, max_temp);  // clamp values
+    tempTemp = constrain(tempTemp, 0, max_temp*10);  // clamp values
     if (tempHum != 0) hum = tempHum; //update temp and hum anly of non zero (sometimes it bugs and goes to 0)
     if (tempTemp != 0) temp = tempTemp;
     saveDate(); //save the time every once in a while
@@ -1287,10 +1287,10 @@ void loop() {
       mettersYpos /*y coord*/,
       0 /*min val*/,
       50 /*max*/,
-      dispTemp / 100,
+      (dispTemp/10) / 100,
       TEMP_COLOR,
       INV_TEXT_COLOR,
-      temp,
+      temp/10,
       0);
     metter(tft.width() - 50,
       mettersYpos,
