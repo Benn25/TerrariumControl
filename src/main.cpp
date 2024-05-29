@@ -713,7 +713,7 @@ void drawDateBloc() { //draw the date and time of the main page
 void drawGraph() {
   //Serial.println("enrtering the drawgraph funct");
 //erase the graph
-  tft.fillRect(0, LowGraphPos - GraphH, tft.width(), GraphH, BLACK);
+  //tft.fillRect(0, LowGraphPos - GraphH, tft.width(), GraphH, BLACK);
   for (int a = 0; a < 320; a++) {
     if (a % 20 == 0)
       tft.drawLine(319 - a, LowGraphPos, 319 - a, LowGraphPos - GraphH,
@@ -721,26 +721,37 @@ void drawGraph() {
     if (a % 40 == 0)
       tft.drawLine(319 - a, LowGraphPos, 319 - a, LowGraphPos - GraphH,
       BACKGROUND_COLOR);  // add vert line every 3 hours
+    int COLFILL = ((25 << 11) | (51 << 5) | 25);
+    if (a % 20 != 0 && a % 40 != 0)
+      tft.drawLine(319 - a, LowGraphPos, 319 - a, LowGraphPos - GraphH,
+      BLACK);
 
-    if (graphLine[a][0] != 0)
+    if (graphLine[a][0] != 0) {
+      /*
       tft.drawLine(319 - a, LowGraphPos, 319 - a,
-      LowGraphPos - map(graphLine[a][0], 0, max_temp*10, 0, GraphH),
-      a % 20 == 0 ? TFT_OFFWHITE : TFT_LIGHTGREY);  // draw the fill first (for temp)
-    }
-  for (int a = 0; a < 320; a++) {  // draw the lines for temp and hygro only if there is non zero data
+        LowGraphPos - map(graphLine[a][0], 0, max_temp * 10, 0, GraphH),
+        a % 20 == 0 ? TFT_OFFWHITE : TFT_LIGHTGREY);  // draw the fill first (for temp)
+*/
+      for (int b = 0; b < map(graphLine[a][0], 0, max_temp * 10, 0, GraphH) ; b++){
+        tft.drawPixel(319 - a, LowGraphPos - b,
+          a % 20 == 0 ? TFT_OFFWHITE : ((31 - b / 11 - a % 2 << 11) | (63 - b / 10 * 2 - a % 2 << 5) | 31 - b / 7 - a % 2));
+        }
+        }
+      }
+    for (int a = 0; a < 320; a++) {  // draw the lines for temp and hygro only if there is non zero data
     for (int p = 0; p < 2; p++) {
     if (graphLine[a][0] != 0)
       tft.drawLine(
       319 - a, LowGraphPos - map(graphLine[a][0], 0, max_temp*10, 0, GraphH)+p,
       319 - (a + 1),
       LowGraphPos - map(graphLine[a + 1][0], 0, max_temp*10, 0, GraphH)+p,
-      IODcolors[0]);
+      IOcolors[0]);
       if (graphLine[a][1] != 0)
         tft.drawLine(319 - a,
         LowGraphPos - map(graphLine[a][1], 0, 100, 0, GraphH)+p,
         319 - (a + 1),
         LowGraphPos - map(graphLine[a + 1][1], 0, 100, 0, GraphH)+p,
-        IODcolors[2]);
+        IOcolors[2]);
       }
     //last, draw the lines of devices activations
     for (int l = 0; l < 4; l++) {
@@ -755,9 +766,9 @@ void drawGraph() {
   
   // draw the max labels
   tft.setTextDatum(TC_DATUM);
-  tft.setTextColor(HYGRO_COLOR, BLACK);
+  tft.setTextColor(IODcolors[2], BLACK);
   tft.drawString("100%", 307, LowGraphPos - GraphH + 3, 1);
-  tft.setTextColor(TEMP_COLOR, BLACK);
+  tft.setTextColor(IODcolors[0], BLACK);
   //construct the string label for max temperature
   String labeltemp;
   labeltemp = max_temp;
@@ -1238,7 +1249,7 @@ void loop() {
     }
 
   static uint32_t lastTime = 0;  // holds its value after every iteration of loop
-  if (millis() - lastTime >= 5000 || lastTime == 0) {  // read sensor every X milliseconds, for 24 hours : 270000 
+  if (millis() - lastTime >= 2000 || lastTime == 0) {  // read sensor every X milliseconds, for 24 hours : 270000 
     lastTime = millis(); //reset the last time TS
     //also do very low refresh things
     // read DHT data every 2 sec here
