@@ -24,6 +24,8 @@
 #define MAXBL 255    // max backlight
 #define MINBL 250//60     // min backlight
 #define max_temp 40  // maximum reachable temperature
+#define min_temp 10  // minimum reachable temperature
+#define min_hygro 30
 #define FanWorkTime 60 //duration you want the fan to work for
 #define timeLine_Y 45 //Y position of the timeline for settings
 

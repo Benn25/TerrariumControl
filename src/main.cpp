@@ -169,6 +169,17 @@ SliderWidget sy = SliderWidget(&tft, &knob);  // Slider  widget for year
 SliderWidget sm = SliderWidget(&tft, &knob);  // Slider  widget for month
 SliderWidget sd = SliderWidget(&tft, &knob);  // Slider  widget for day
 
+const uint8_t fanIcon[8] = {
+  0b00111100,
+  0b01000010,
+  0b10100101,
+  0b10000001,
+  0b10000001,
+  0b10100101,
+  0b01000010,
+  0b00111100
+  };
+
 CRGB leds[NUM_LEDS];
 
 #define CALIBRATION_FILE "/TouchCalData1"
@@ -643,6 +654,19 @@ void recoverDate() {
 
 /////////////// GRAPH FUNCTIONS ////////////////
 
+void drawFanIcon(int x, int y) {
+  for (int row = 0; row < 8; row++) {
+    for (int col = 0; col < 8; col++) {
+      if (fanIcon[row] & (1 << (7 - col))) {
+        tft.drawPixel(x + col, y + row, TFT_WHITE); // Draw the fan pixel
+        }
+      else {
+        tft.drawPixel(x + col, y + row, TFT_BLACK); // Draw the background pixel
+        }
+      }
+    }
+  }
+
 void metter(int x, int y, int lowBound, int highBound, float value,
   unsigned int colour, unsigned int emptyColour, float text,
   int labindex) { //draw the 2 metters
@@ -726,53 +750,65 @@ void drawGraph() {
       tft.drawLine(319 - a, LowGraphPos, 319 - a, LowGraphPos - GraphH,
       BLACK);
 
-    if (graphLine[a][0] != 0) {
+    if (graphLine[a][0] != 0) { //draw the fill for temp
       /*
       tft.drawLine(319 - a, LowGraphPos, 319 - a,
         LowGraphPos - map(graphLine[a][0], 0, max_temp * 10, 0, GraphH),
         a % 20 == 0 ? TFT_OFFWHITE : TFT_LIGHTGREY);  // draw the fill first (for temp)
 */
-      for (int b = 0; b < map(graphLine[a][0], 0, max_temp * 10, 0, GraphH) ; b++){
+      for (int b = 0; b < constrain(map(graphLine[a][0], min_temp * 10, max_temp * 10, 0, GraphH), 0, GraphH); b++) { //dither a little bit to avoid banding
         tft.drawPixel(319 - a, LowGraphPos - b,
-          a % 20 == 0 ? TFT_OFFWHITE : ((31 - b / 11 - a % 2 << 11) | (63 - b / 10 * 2 - a % 2 << 5) | 31 - b / 7 - a % 2));
-        }
+          a % 20 == 0 ? TFT_OFFWHITE : ((31 << 11) | (61 - b / 15 * 2 - a % 3 + b %2<< 5) | 29 - b / 7 - a % 2+b%3));
         }
       }
-    for (int a = 0; a < 320; a++) {  // draw the lines for temp and hygro only if there is non zero data
+
+    // draw the lines for temp and hygro only if there is non zero data
     for (int p = 0; p < 2; p++) {
     if (graphLine[a][0] != 0)
       tft.drawLine(
-      319 - a, LowGraphPos - map(graphLine[a][0], 0, max_temp*10, 0, GraphH)+p,
+      319 - a, LowGraphPos - constrain(map(graphLine[a][0], min_temp*10, max_temp * 10, 0, GraphH),0,GraphH) + p,
       319 - (a + 1),
-      LowGraphPos - map(graphLine[a + 1][0], 0, max_temp*10, 0, GraphH)+p,
+      LowGraphPos - constrain(map(graphLine[a + 1][0], min_temp * 10, max_temp * 10, 0, GraphH), 0, GraphH) + p,
       IOcolors[0]);
       if (graphLine[a][1] != 0)
         tft.drawLine(319 - a,
-        LowGraphPos - map(graphLine[a][1], 0, 100, 0, GraphH)+p,
+        LowGraphPos - constrain(map(graphLine[a][1], min_hygro, 100, 0, GraphH),0,GraphH)+p,
         319 - (a + 1),
-        LowGraphPos - map(graphLine[a + 1][1], 0, 100, 0, GraphH)+p,
+        LowGraphPos - constrain(map(graphLine[a+1][1], min_hygro, 100, 0, GraphH), 0, GraphH) + p,
         IOcolors[2]);
       }
     //last, draw the lines of devices activations
     for (int l = 0; l < 4; l++) {
       if (graphLine[a][l+2]) {
-        tft.drawPixel(319 - a, LowGraphPos - 5 - l * 3, IOcolors[l]);
-        tft.drawPixel(319 - a, LowGraphPos - 4 - l * 3, IOcolors[l]);
-        tft.drawPixel(319 - a, LowGraphPos - 3 - l * 3, TFT_BLACK);
+        tft.drawPixel(319 - a, LowGraphPos - 10 - l * 3, IOcolors[l]);
+        tft.drawPixel(319 - a, LowGraphPos - 9 - l * 3, IOcolors[l]);
+        tft.drawPixel(319 - a, LowGraphPos - 8 - l * 3, TFT_BLACK);
         }
       }
-      }
+    if (graphLine[a][5]) drawFanIcon(319 - a, LowGraphPos - 24);
+    }
 
-  
   // draw the max labels
+  String labelmaxtemp;
+  String labelmintemp;
+  String labelminhygro;
+  labelmaxtemp = max_temp;
+  labelmintemp = min_temp;
+  labelminhygro = min_hygro;
+
   tft.setTextDatum(TC_DATUM);
-  tft.setTextColor(IODcolors[2], BLACK);
-  tft.drawString("100%", 307, LowGraphPos - GraphH + 3, 1);
-  tft.setTextColor(IODcolors[0], BLACK);
-  //construct the string label for max temperature
-  String labeltemp;
-  labeltemp = max_temp;
-  tft.drawString(labeltemp + "C", 12, LowGraphPos - GraphH + 3, 1);
+  tft.setTextPadding(0);
+  //construct the string labels for temp and hygro
+  for (int c = 0; c < 2; c++) {
+    c == 1 ? tft.setTextColor(IOcolors[2]): tft.setTextColor(IODcolors[2], BLACK);
+    tft.drawString("100%", 307 - c, LowGraphPos - GraphH + 3 - c, 1);
+    tft.drawString(labelminhygro + "%", 307 - c, LowGraphPos - 7 - c, 1);
+
+    c == 1 ?  tft.setTextColor(IOcolors[0]) : tft.setTextColor(IODcolors[0], BLACK);
+    tft.drawString(labelmaxtemp + "C", 12 - c, LowGraphPos - GraphH + 3 - c, 1);
+    tft.drawString(labelmintemp + "C", 12 - c, LowGraphPos - 7 - c, 1);
+    }
+  
   //redraw the sunrise sunset info
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(TEXT_COLOR, BACKGROUND_COLOR);
@@ -814,18 +850,19 @@ void drawDuration(int Tim) {
   }
 
 void drawTags(int x) {  // draw the values labels on the graph
-  tft.setTextPadding(25);
+  tft.setTextPadding(650);
   int indexOfData =
     map(x, 319, 0, 0, 319);  // select the corresponding bar in the array of data
-  float tempTag = graphLine[indexOfData][0];
+  float tempTag = graphLine[indexOfData][0]/10;
   float hygTag = graphLine[indexOfData][1];
   tft.setTextDatum(BC_DATUM);
-  tft.setTextColor(TFT_BLACK, TEMP_COLOR);
-  tft.drawFloat(tempTag, 1, tft.width() / 2, LowGraphPos + 1, 2 /*font*/);
+  tft.setTextColor(TFT_BLACK, IOcolors[0]);
+  tft.drawFloat(tempTag, 1, constrain(x, 20, tft.width() - 20), LowGraphPos - 2, 2 /*font*/);
   tft.setTextDatum(TC_DATUM);
-  tft.setTextColor(TFT_BLACK, HYGRO_COLOR, true);
-  tft.drawFloat(hygTag, 1, tft.width() / 2, LowGraphPos - GraphH, 2 /*font*/);
+  tft.setTextColor(TFT_BLACK, IOcolors[2], true);
+  tft.drawFloat(hygTag, 1, constrain(x, 20, tft.width() - 20), LowGraphPos - GraphH + 2, 2 /*font*/);
   tft.setTextDatum(MC_DATUM);
+  tft.setTextPadding(0);
   }
 
 void drawTimeLine() {
@@ -1249,7 +1286,7 @@ void loop() {
     }
 
   static uint32_t lastTime = 0;  // holds its value after every iteration of loop
-  if (millis() - lastTime >= 2000 || lastTime == 0) {  // read sensor every X milliseconds, for 24 hours : 270000 
+  if (millis() - lastTime >= 270000 || lastTime == 0) {  // read sensor every X milliseconds, for 24 hours : 270000 
     lastTime = millis(); //reset the last time TS
     //also do very low refresh things
     // read DHT data every 2 sec here
@@ -1476,14 +1513,6 @@ void loop() {
           while (
             tft.getTouch(&t_x, &t_y)) {  // screen is pressed, stop everything
             }
-/*
-          FanSW.state = FanOut;
-          pumpSW.state = pumpOut;
-          lightSW.state = lightOut;
-          seclightSW.state = secLightOut;
-          mistSW.state = mistOut;
-*/
-
           }
         }
       if (page == 1) {  // to do on pressed on clock setup page
@@ -1691,6 +1720,7 @@ void loop() {
     }
   
   if (oldPressed != pressed) { //touch has been released
+    if (page == 0) drawGraph(); //redraw the graph on main page on release
     }
 
   oldPressed = pressed;
