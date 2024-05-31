@@ -758,9 +758,12 @@ void drawGraph() {
 */
       for (int b = 0; b < constrain(map(graphLine[a][0], min_temp * 10, max_temp * 10, 0, GraphH), 0, GraphH); b++) { //dither a little bit to avoid banding
         tft.drawPixel(319 - a, LowGraphPos - b,
-          a % 20 == 0 ? TFT_OFFWHITE : ((31 << 11) | (61 - b / 15 * 2 - a % 3 + b %2<< 5) | 29 - b / 7 - a % 2+b%3));
+          a % 20 == 0 ? TFT_OFFWHITE : ((31 << 11) | (61 - b / 20 * 2 - a % 3 + b %2<< 5) | 29 - b / 10 - a % 2+b%3));
         }
       }
+
+    //draw the midline
+   if(a % 3 == 0) tft.drawPixel(319-a,LowGraphPos-GraphH/2,TFT_MIDGREY);
 
     // draw the lines for temp and hygro only if there is non zero data
     for (int p = 0; p < 2; p++) {
@@ -792,9 +795,15 @@ void drawGraph() {
   String labelmaxtemp;
   String labelmintemp;
   String labelminhygro;
+  String labelmidtemp;
+  String labelmidhygro;
   labelmaxtemp = max_temp;
   labelmintemp = min_temp;
   labelminhygro = min_hygro;
+  labelmidtemp = (max_temp+min_temp)/2;
+  labelmidhygro = (100+min_hygro)/2;
+
+  
 
   tft.setTextDatum(TC_DATUM);
   tft.setTextPadding(0);
@@ -802,13 +811,17 @@ void drawGraph() {
   for (int c = 0; c < 2; c++) {
     c == 1 ? tft.setTextColor(IOcolors[2]): tft.setTextColor(IODcolors[2], BLACK);
     tft.drawString("100%", 307 - c, LowGraphPos - GraphH + 3 - c, 1);
+    tft.drawString(labelmidhygro + "%", 307 - c, LowGraphPos - GraphH/2-3 - c, 1);
     tft.drawString(labelminhygro + "%", 307 - c, LowGraphPos - 7 - c, 1);
 
     c == 1 ?  tft.setTextColor(IOcolors[0]) : tft.setTextColor(IODcolors[0], BLACK);
     tft.drawString(labelmaxtemp + "C", 12 - c, LowGraphPos - GraphH + 3 - c, 1);
+    tft.drawString(labelmidtemp + "C", 12 - c, LowGraphPos - GraphH/2 -3 - c, 1);
     tft.drawString(labelmintemp + "C", 12 - c, LowGraphPos - 7 - c, 1);
     }
+
   
+
   //redraw the sunrise sunset info
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(TEXT_COLOR, BACKGROUND_COLOR);
@@ -1286,7 +1299,7 @@ void loop() {
     }
 
   static uint32_t lastTime = 0;  // holds its value after every iteration of loop
-  if (millis() - lastTime >= 270000 || lastTime == 0) {  // read sensor every X milliseconds, for 24 hours : 270000 
+  if (millis() - lastTime >= 150000 || lastTime == 0) {  // read sensor every X milliseconds, for 24 hours : 270000 
     lastTime = millis(); //reset the last time TS
     //also do very low refresh things
     // read DHT data every 2 sec here
