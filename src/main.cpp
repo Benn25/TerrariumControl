@@ -1,7 +1,3 @@
-// #include
-// "C:\Users\benn2\OneDrive\arduino_16\TerrariumControl\.pio\libdeps\ESP32\TFT_eSPI\examples\320
-// x 240\TFT_Pie_Chart\TFT_Pie_Chart.ino"
-
 // ESP32_WROOM_TFT_eSPI_ILI9341_rainbow_scale
 // note: rainbow scale original sketch by Bodmer
 //
@@ -32,6 +28,7 @@
 #include <FastLED.h>
 #include <ESP32Time.h>
 ESP32Time rtc(0);  // offset in param, but dont use it
+/*
 int HoldHour[24]; //the hour to hold when setting up a time
 int HoldMin[60]; //same for the minute
 char const* HoldDayOW[] = { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" }; //hold the days of the week in string
@@ -39,8 +36,7 @@ char const* HoldMonth[] = {
     "Jan", "Feb", "Mar", "Apr", "May", "Jun",
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
   };
-
-
+*/
 
 // Sunrise color palette stored in PROGMEM
 DEFINE_GRADIENT_PALETTE(sunrisePalette) {
@@ -159,6 +155,13 @@ unsigned long IOtimeStamps[5] = {};
 #include "Free_Fonts.h"
 #include <settings.h>
 
+//running average of sensor hum and temp:
+int sensorReadings[2][numSamples_for_sensors]; // Array to store sensor readings
+int sensorIndex[2] = { 0 }; // Index for each sensor's readings
+long sensorSums[2] = { 0 }; // Sum of readings for each sensor
+float avTem, avHum; //store the averages for temp and hum
+
+
 TFT_eSPI tft = TFT_eSPI();             // invoke custom library
 TFT_eSprite knob = TFT_eSprite(&tft);  // Sprite for the slide knob
 uint16_t t_x = 9999, t_y = 9999;  // To store the touch coordinates
@@ -200,12 +203,12 @@ bool oldlightOut = 0; //main light ON/OFF
 bool oldpumpOut = 0; //water pump ON/OFF
 bool oldsecLightOut = 0; //secondary light analog write 256 values
 bool OldPinOutStates[5] = {};
+int oldMin; //track the minutes for refreshing the display of time
 
 uint16_t RGB888toRGB565(const char* rgb32_str_) {
   long rgb32 = strtoul(rgb32_str_, 0, 16);
   return (rgb32 >> 8 & 0xf800) | (rgb32 >> 5 & 0x07e0) | (rgb32 >> 3 & 0x001f);
   }
-
 
 int IOstates[288][5] = {}; //settings data, when to light up, when to start the pump etc...
 //order, from top in the timeline : light, pump, mist, fan, secLight
@@ -394,6 +397,21 @@ float sineWave(long phase, int upperBound) {
   val *= upperBound / 2;
 
   return int(val);
+  }
+
+void updateRunningAverage(int sensorID, int newReading) {
+  // Update the sum by subtracting the oldest reading and adding the new one
+  sensorSums[sensorID] -= sensorReadings[sensorID][sensorIndex[sensorID]];
+  sensorSums[sensorID] += newReading;
+
+  // Update the readings array with the new reading
+  sensorReadings[sensorID][sensorIndex[sensorID]] = newReading;
+
+  // Increment the index and wrap around if necessary
+  sensorIndex[sensorID] = (sensorIndex[sensorID] + 1) % numSamples_for_sensors;
+
+  // Return the average
+  //return (float)sensorSums[sensorID] / numSamples_for_sensors;
   }
 
 int remapExponential(int toTimer/*the value to evaluate*/, int upbound/*max value*/, float upTime) {
@@ -775,9 +793,9 @@ void drawGraph() {
       IOcolors[0]);
       if (graphLine[a][1] != 0)
         tft.drawLine(319 - a,
-        LowGraphPos - constrain(map(graphLine[a][1], min_hygro, 100, 0, GraphH),0,GraphH)+p,
+        LowGraphPos - constrain(map(graphLine[a][1], min_hygro*10, 100*10, 0, GraphH),0,GraphH)+p,
         319 - (a + 1),
-        LowGraphPos - constrain(map(graphLine[a+1][1], min_hygro, 100, 0, GraphH), 0, GraphH) + p,
+        LowGraphPos - constrain(map(graphLine[a+1][1], min_hygro*10, 100*10, 0, GraphH), 0, GraphH) + p,
         IOcolors[2]);
       }
     //last, draw the lines of devices activations
@@ -1219,10 +1237,9 @@ void setup() {
   recoverDate();
 
   Serial.println("starting TFT display");
-  // preferences.begin("Settings", false);
-  //  save shit with preferences.putUInt("NameOfTheThing", val);
-  //  Get it back with unsigned int val = preferences.getUInt("NameOfTheThing",
-  //  0); 0 is the def val, when nothing is saved yet
+
+  // mySensor.setHumOffset(10);
+  mySensor.setTempOffset(-6.0);
 
  // Initialize touch arrays
   for (int i = 0; i < numSamples; i++) {
@@ -1231,9 +1248,12 @@ void setup() {
     touchDetected[i] = false;
     }
 
-  // mySensor.setHumOffset(10);
-  mySensor.setTempOffset(-6.0);
-
+  //initialize sensor average values (to not start at 0)
+    for (int j = 0; j < numSamples_for_sensors; j++) {
+      updateRunningAverage(0, 500);
+      updateRunningAverage(1, 200);
+      }
+  
   // Calibrate the touch screen and retrieve the scaling factors
   touch_calibrate();
 
@@ -1266,12 +1286,12 @@ void setup() {
 
 
   for (int a = 0; a < 5; a++) {
-    readFromFS(a);
+    readFromFS(a); //retrieve the data for the limelines
     delay(20); //sanity delay
     pinMode(Out_Pin[a], OUTPUT); //initialise the pins for outputs
     }
   
-  FastLED.addLeds<WS2811, DATA_PIN, GRB>(leds, NUM_LEDS);  // GRB ordering is typical
+  FastLED.addLeds<WS2811, DATA_PIN, GRB>(leds, NUM_LEDS); 
 
   fill_solid(leds, NUM_LEDS, CRGB::Black);
   FastLED.show();
@@ -1298,21 +1318,38 @@ void loop() {
     getSunriseSunset(rtc.getDayofYear()); //refresh the time of real sunrise and sunset
     }
 
+  if(rtc.getMinute() != oldMin){
+    if(page == 0) drawDateBloc();
+    oldMin = rtc.getMinute();
+    }
+
+  EVERY_N_SECONDS(read_sensor_every_s) {// read sensors every X seconds and update the running average
+      mySensor.read();
+      float tempHum = mySensor.getHumidity()*10; //mult by 10 to improve precis
+      float tempTemp = mySensor.getTemperature() * 10; //multiply by 4 to increase precision for the int
+      tempHum = constrain(tempHum, 0, 100*10);         // clamp values
+      tempTemp = constrain(tempTemp, 0, max_temp * 10);  // clamp values
+      if (tempHum != 0) hum = tempHum; //update temp and hum only of non zero (sometimes it bugs and goes to 0)
+      if (tempTemp != 0) temp = tempTemp;
+
+      for (int s = 0; s < 2; s++) { //process the new temp and hum into the running average
+        if (s == 0) updateRunningAverage(s, hum);
+        if (s == 1) updateRunningAverage(s, temp);
+        }
+
+      avTem = (float)sensorSums[1] / numSamples_for_sensors;
+      avHum = (float)sensorSums[0] / numSamples_for_sensors;
+    }
+  
   static uint32_t lastTime = 0;  // holds its value after every iteration of loop
-  if (millis() - lastTime >= 150000 || lastTime == 0) {  // read sensor every X milliseconds, for 24 hours : 270000 
+  if (millis() - lastTime >= 10000 || lastTime == 0) {  // read sensor every X milliseconds, for 24 hours : 270000 
     lastTime = millis(); //reset the last time TS
     //also do very low refresh things
     // read DHT data every 2 sec here
-    mySensor.read();
-    int tempHum = mySensor.getHumidity();
-    float tempTemp = mySensor.getTemperature()*10; //multiply by 4 to increase precision for the int
-    tempHum = constrain(tempHum, 0, 100);         // clamp values
-    tempTemp = constrain(tempTemp, 0, max_temp*10);  // clamp values
-    if (tempHum != 0) hum = tempHum; //update temp and hum anly of non zero (sometimes it bugs and goes to 0)
-    if (tempTemp != 0) temp = tempTemp;
+    
     saveDate(); //save the time every once in a while
-        graphLine[0][0] = temp; //record the temp and put it in the first place of the array 
-        graphLine[0][1] = hum; //same for hum
+    graphLine[0][0] = avTem; //record the temp and put it in the first place of the array 
+    graphLine[0][1] = avHum; //same for hum
 
       if (page == 0) {
       drawGraph();// if we are on main page, refresh the graph
@@ -1327,11 +1364,11 @@ void loop() {
       }
     }
   // fluidify the move of the metters
-  dispTemp > temp * 100
-    ? dispTemp = dispTemp - abs((temp * 100) - dispTemp) / 70
-    : dispTemp = dispTemp + abs((temp * 100) - dispTemp) / 70;
-  dispHum > hum * 100 ? dispHum = dispHum - abs((hum * 100) - dispHum) / 70
-    : dispHum = dispHum + abs((hum * 100) - dispHum) / 70;
+  dispTemp > avTem* 100
+    ? dispTemp = dispTemp - abs((avTem * 100) - dispTemp) / 70
+    : dispTemp = dispTemp + abs((avTem * 100) - dispTemp) / 70;
+  dispHum > avHum * 100 ? dispHum = dispHum - abs((avHum * 100) - dispHum) / 70
+    : dispHum = dispHum + abs((avHum * 100) - dispHum) / 70;
 
   // Serial.println(dispHum);
   static uint32_t lastTimeForRef = 0;  // holds its value after every iteration of loop
@@ -1341,7 +1378,6 @@ void loop() {
       //Serial.println("refresh the graph");
       //////////draw the graph////////////
       //drawGraph();
-      drawDateBloc();
       }
     //////////draw the 2 metters////////////
     metter(50 /*x coord*/,
@@ -1351,16 +1387,16 @@ void loop() {
       (dispTemp/10) / 100,
       TEMP_COLOR,
       INV_TEXT_COLOR,
-      temp/10,
+      avTem/10,
       0);
     metter(tft.width() - 50,
       mettersYpos,
       0,
       100,
-      dispHum / 100,
+      (dispHum/10) / 100,
       HYGRO_COLOR,
       INV_TEXT_COLOR,
-      hum,
+      avHum/10,
       1);
 
     //////////draw toggle buttons ////////////
@@ -1732,13 +1768,13 @@ void loop() {
       } //end of to do when pressed
     }
   
-  if (oldPressed != pressed) { //touch has been released
-    if (page == 0) drawGraph(); //redraw the graph on main page on release
+  if (oldPressed != pressed && pressed == 0) { //touch has been released
+    if (page == 0 && t_y < LowGraphPos) drawGraph(); //redraw the graph on main page on release
     }
 
   oldPressed = pressed;
-
-    outputStates(); //change the outputs according to what is needed
+    
+  outputStates(); //change the outputs according to what is needed
 
     for (int a = 0; a < 5; a++) {
       OldPinOutStates[a] = PinOutStates[a];

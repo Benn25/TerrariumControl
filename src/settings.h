@@ -1,5 +1,10 @@
-//the buttons OK and cancel
 #include <TFT_eSPI.h>
+
+//
+#define read_sensor_every_s 5
+#define numSamples_for_sensors 15 // Number of samples for running average
+
+//the buttons OK and cancel
 #define but_W 100 //OK but W
 #define but_H 30 //OK but H
 #define but_X 80 //OK but X pos
