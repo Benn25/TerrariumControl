@@ -780,8 +780,13 @@ void drawGraph() {
         }
       }
 
-    //draw the midline
-    if (a % 3 == 0) tft.drawPixel(319 - a, LowGraphPos - GraphH / 2, TFT_MIDGREY);
+    //draw the midlines
+    if (a % 3 == 0) {
+      tft.drawPixel(319 - a, LowGraphPos - GraphH / 2, TFT_MIDGREY);
+      tft.drawPixel(319 - a, LowGraphPos - GraphH / 4, TFT_LIGHTGREY);
+      tft.drawPixel(319 - a, LowGraphPos - GraphH / 4 *3, TFT_LIGHTGREY);
+
+      }
     }
 
   // draw the max labels
@@ -791,10 +796,11 @@ void drawGraph() {
   String labelmidtemp;
   String labelmidhygro;
   labelmaxtemp = max_temp;
-  labelmintemp = min_temp;
-  labelminhygro = min_hygro;
-  labelmidtemp = (max_temp+min_temp)/2;
-  labelmidhygro = (100+min_hygro)/2;
+if(min_temp != 0)  labelmintemp = min_temp;
+labelminhygro = min_hygro;
+int tempmidtemp = (max_temp + min_temp) / 2;
+labelmidtemp = tempmidtemp;
+labelmidhygro = (100 + min_hygro) / 2;
 
   tft.setTextPadding(0);
   //construct the string labels for temp and hygro
@@ -809,31 +815,32 @@ void drawGraph() {
     c == 1 ? tft.setTextColor(IOcolors[0]) : tft.setTextColor(IODcolors[0], BLACK);
     tft.drawString(labelmaxtemp + "C", 12 - c, LowGraphPos - GraphH + 3 - c, 1);
     tft.drawString(labelmidtemp + "C", 12 - c, LowGraphPos - GraphH/2 -3 - c, 1);
-    tft.drawString(labelmintemp + "C", 12 - c, LowGraphPos - 7 - c, 1);
+    tft.drawString((min_temp == 0 ? "0" : labelmintemp) + "C", 12 - c, LowGraphPos - 7 - c, 1);
     }
 
   //label for the actual hygro:
   int HygH = LowGraphPos - constrain(map(graphLine[0][1], min_hygro * 10, 100 * 10, 0, GraphH), 0, GraphH);
   int TemH = LowGraphPos - constrain(map(graphLine[0][0], min_temp * 10, max_temp * 10, 0, GraphH), 0, GraphH);
   int Case;
-  if (HygH > TemH) { Case = -1; }
-  else { Case = 1; }
-  
+  if (HygH > TemH) { Case = -1; } //-1 is when hygro is upper, temp lower
+  else { Case = 1; }//1 is temp upper, hygro lower
+
+  //first hygro
   Case == -1 ? tft.setTextDatum(TR_DATUM) : tft.setTextDatum(BR_DATUM);
     tft.setTextColor(IOcolors[2],BLACK);
     //if the value is more than a quarter, draw it
-    if (graphLine[0][1] / 10 > (100 + min_hygro) / 4)
+    if (graphLine[0][1] / 10 > (100 + min_hygro) / (3-Case/2))
       tft.drawNumber(graphLine[0][1] / 10, 319 - 2, HygH - Case * 5+abs(Case*2), 1);
 
-    //same for temp
+    //temp
     Case == 1 ? tft.setTextDatum(TR_DATUM) : tft.setTextDatum(BR_DATUM);
     tft.setTextColor(IOcolors[0],BLACK);
     //if the value if more than a quarter, draw it
-    if (graphLine[0][0] / 10 > (max_temp + min_temp) / 4)
+    if (graphLine[0][0] / 10 > (max_temp + min_temp) / (3+Case/2))
       tft.drawNumber(graphLine[0][0] / 10, 319 - 2, TemH + Case * 5+abs(Case*2), 1);
 
     
-    for (int a = 0; a < 320; a++) {// draw the lines for temp and hygro only if there is non zero data
+    for (int a = 1; a < 320; a++) {// draw the lines for temp and hygro only if there is non zero data
     for (int p = 0; p < 2; p++) {
       if (graphLine[a][0] != 0)
         tft.drawLine(
@@ -1361,7 +1368,7 @@ void loop() {
     }
   
   static uint32_t lastTime = 0;  // holds its value after every iteration of loop
-  if (millis() - lastTime >= 100000 || lastTime == 0) {  // for 24 hours : 270000 
+  if (millis() - lastTime >= 150000 || lastTime == 0) {  // for 24 hours : 270000 
     lastTime = millis(); //reset the last time TS
     //also do very low refresh things
     // read DHT data every 2 sec here
