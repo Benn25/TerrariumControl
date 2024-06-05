@@ -136,6 +136,7 @@ int SunriseLen = 120; //duration of sunrise and sunset, in min
 int minOfLightON; //the minute on day the light will turn on
 int minOfLightOFF; //same for off
 bool linkMistPump = 1; //activate pump when mist is ON?
+int graphUpdate = 270;//270 ; //freq of progress the graph (270 is 5 min, that's 24h for a 320px screen)
 
 //timestamps :
 unsigned long fanTS;
@@ -998,9 +999,11 @@ void drawSplash(int p) {  // draw the splash coresponding to the page
     tft.drawString("sunset :", 162, 2, 1);
     tft.drawString(getTimeString(SunsetMin), 201, 2, 1);
 
+    String maxGraphTime;
+    maxGraphTime = (graphUpdate * 8) / 90;
     tft.setTextColor(TEXT_COLOR);
     tft.setTextDatum(TL_DATUM);
-    tft.drawString("24h", 1, LowGraphPos + 4, 1);
+    tft.drawString(maxGraphTime + "h", 1, LowGraphPos + 4, 1);
     tft.setTextDatum(TR_DATUM);
     tft.drawString("now", tft.width() - 2, LowGraphPos + 4, 1);
     tft.drawFastHLine(0, LowGraphPos + 1, 319, TFT_MIDGREY);
@@ -1368,7 +1371,7 @@ void loop() {
     }
   
   static uint32_t lastTime = 0;  // holds its value after every iteration of loop
-  if (millis() - lastTime >= 150000 || lastTime == 0) {  // for 24 hours : 270000 
+  if (millis() - lastTime >= graphUpdate * 1000 || lastTime == 0) {  // for 24 hours : 270000 
     lastTime = millis(); //reset the last time TS
     //also do very low refresh things
     // read DHT data every 2 sec here
@@ -1377,7 +1380,8 @@ void loop() {
     graphLine[0][0] = avTem; //record the temp and put it in the first place of the array 
     graphLine[0][1] = avHum; //same for hum
 
-      if (page == 0) {
+    if (page == 0) {
+      drawSplash(page);
       drawGraph();// if we are on main page, refresh the graph
       }
 
