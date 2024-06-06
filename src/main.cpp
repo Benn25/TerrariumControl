@@ -94,7 +94,7 @@ float temp, hum;
 float dispTemp, dispHum;
 unsigned long lastPress = 0;  // counter for the time since last press for dimming
 int page = 0;       // the page to display, 0 is main screen
-int last_page = 0;  // track the change of page, to redraw everything
+int last_page = 1;  // track the change of page, to redraw everything
 bool nuristate = 1; //state of the buttons for setting the times
 
 bool pressed; //track the pressed state of the screen
@@ -830,14 +830,14 @@ labelmidhygro = (100 + min_hygro) / 2;
   Case == -1 ? tft.setTextDatum(TR_DATUM) : tft.setTextDatum(BR_DATUM);
     tft.setTextColor(IOcolors[2],BLACK);
     //if the value is more than a quarter, draw it
-    if (graphLine[0][1] / 10 > (100 + min_hygro) / (3-Case/2))
+    if (graphLine[0][1] / 10 > (100 + min_hygro) / (3 - Case / 2) && graphLine[0][1] / 10 < 100*0.8)
       tft.drawNumber(graphLine[0][1] / 10, 319 - 2, HygH - Case * 5+abs(Case*2), 1);
 
     //temp
     Case == 1 ? tft.setTextDatum(TR_DATUM) : tft.setTextDatum(BR_DATUM);
     tft.setTextColor(IOcolors[0],BLACK);
     //if the value if more than a quarter, draw it
-    if (graphLine[0][0] / 10 > (max_temp + min_temp) / (3+Case/2))
+    if (graphLine[0][0] / 10 > (max_temp + min_temp) / (3 + Case / 2) && graphLine[0][0] / 10 < max_temp*0.8)
       tft.drawNumber(graphLine[0][0] / 10, 319 - 2, TemH + Case * 5+abs(Case*2), 1);
 
     
@@ -1380,17 +1380,16 @@ void loop() {
     graphLine[0][0] = avTem; //record the temp and put it in the first place of the array 
     graphLine[0][1] = avHum; //same for hum
 
-    if (page == 0) {
-      drawSplash(page);
-      drawGraph();// if we are on main page, refresh the graph
-      }
-
         for (int a = 0; a < 320; a++) {
           // slide the whole arrays
       for (int s = 0; s < 6; s++) {
         graphLine[319 - a][s] = graphLine[319 - (a + 1)][s];
 //        graphLine[319 - a][1] = graphLine[319 - (a + 1)][1];
         }
+      }
+    if (page == 0) {
+      //drawSplash(page);
+      drawGraph();// if we are on main page, refresh the graph
       }
     }
   // fluidify the move of the metters

@@ -27,7 +27,7 @@
 #define mettersYpos 197  // Y position of the round metters
 
 #define MAXBL 255    // max backlight
-#define MINBL 250//60     // min backlight
+#define MINBL 60     // min backlight
 #define max_temp 40  // maximum reachable temperature
 #define min_temp 0.0  // minimum reachable temperature
 #define min_hygro 20
