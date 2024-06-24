@@ -157,7 +157,9 @@
  lib/FastLED/src/colorpalettes.h lib/FastLED/src/noise.h \
  lib/FastLED/src/power_mgt.h lib/FastLED/src/fastspi.h \
  lib/FastLED/src/fastspi_bitbang.h lib/FastLED/src/chipsets.h \
- .pio/libdeps/ESP32/ESP32Time/ESP32Time.h \
+ .pio/libdeps/ESP32/ESP32Time/ESP32Time.h lib/RTClib/src/RTClib.h \
+ .pio/libdeps/ESP32/Adafruit\ BusIO/Adafruit_I2CDevice.h \
+ C:/Users/benn2/.platformio/packages/framework-arduinoespressif32/libraries/Wire/src/Wire.h \
  .pio/libdeps/ESP32/DHTNEW/dhtnew.h \
  C:/Users/benn2/.platformio/packages/framework-arduinoespressif32/libraries/FS/src/FS.h \
  C:/Users/benn2/.platformio/packages/framework-arduinoespressif32/libraries/SPI/src/SPI.h \

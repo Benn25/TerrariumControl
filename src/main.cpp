@@ -38,6 +38,18 @@ char const* HoldMonth[] = {
   };
 */
 
+// Date and time functions using a DS3231 RTC connected via I2C and Wire lib
+#include "RTClib.h"
+/*
+DS3231         ESP32 DevKitC V4
+-------        -----------------
+VCC    <-----> 3.3V
+GND    <-----> GND
+SDA    <-----> GPIO 21 (SDA)
+SCL    <-----> GPIO 22 (SCL)
+*/
+//RTC_DS3231 rtc;
+
 // Sunrise color palette stored in PROGMEM
 DEFINE_GRADIENT_PALETTE(sunrisePalette) {
   0, 0, 0, 0,   // Black (night)

@@ -98,7 +98,7 @@ float Maxdurations[5] = { //max duration for each parameters, in h
     4/*pump*/,
     2/*mist*/,
     1/*fan*/,
-    8/*unset*/
+    8/*sunset*/
     };
 
 #define SunriseWinter 421 //the min of day of sunrise on dec 21
@@ -107,7 +107,7 @@ float Maxdurations[5] = { //max duration for each parameters, in h
 #define SunsetSummer 1154 //the min of day of sunset on jun 21
 
 
-int Out_Pin[5] = { 12,13,14,21,17 }; //pins for all the outputs
+int Out_Pin[5] = { 12,13,14,25,17 }; //pins for all the outputs
 
 #define NUM_LEDS 11
 #define DATA_PIN 27

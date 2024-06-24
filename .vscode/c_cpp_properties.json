@@ -10,6 +10,9 @@
             "includePath": [
                 "g:/projects arduino/TerrariumControl/include",
                 "g:/projects arduino/TerrariumControl/src",
+                "g:/projects arduino/TerrariumControl/lib/RTClib/src",
+                "g:/projects arduino/TerrariumControl/.pio/libdeps/ESP32/Adafruit BusIO",
+                "C:/Users/benn2/.platformio/packages/framework-arduinoespressif32/libraries/Wire/src",
                 "g:/projects arduino/TerrariumControl/lib/FastLED/src",
                 "g:/projects arduino/TerrariumControl/.pio/libdeps/ESP32/ESP32Time",
                 "g:/projects arduino/TerrariumControl/.pio/libdeps/ESP32/TFT_eWidget/src",
@@ -213,6 +216,7 @@
                 "g:/projects arduino/TerrariumControl/lib/ESP32Time",
                 "g:/projects arduino/TerrariumControl/lib/TFT_eWidget/src",
                 "g:/projects arduino/TerrariumControl/.pio/libdeps/ESP32/FastLED/src",
+                "g:/projects arduino/TerrariumControl/.pio/libdeps/ESP32/RTClib/src",
                 "g:/projects arduino/TerrariumControl/.pio/libdeps/ESP32/TFT_eSPI",
                 "C:/Users/benn2/.platformio/packages/framework-arduinoespressif32/libraries/ArduinoOTA/src",
                 "C:/Users/benn2/.platformio/packages/framework-arduinoespressif32/libraries/AsyncUDP/src",
@@ -242,7 +246,6 @@
                 "C:/Users/benn2/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
                 "C:/Users/benn2/.platformio/packages/framework-arduinoespressif32/libraries/WiFiClientSecure/src",
                 "C:/Users/benn2/.platformio/packages/framework-arduinoespressif32/libraries/WiFiProv/src",
-                "C:/Users/benn2/.platformio/packages/framework-arduinoespressif32/libraries/Wire/src",
                 ""
             ],
             "browse": {
@@ -250,6 +253,9 @@
                 "path": [
                     "g:/projects arduino/TerrariumControl/include",
                     "g:/projects arduino/TerrariumControl/src",
+                    "g:/projects arduino/TerrariumControl/lib/RTClib/src",
+                    "g:/projects arduino/TerrariumControl/.pio/libdeps/ESP32/Adafruit BusIO",
+                    "C:/Users/benn2/.platformio/packages/framework-arduinoespressif32/libraries/Wire/src",
                     "g:/projects arduino/TerrariumControl/lib/FastLED/src",
                     "g:/projects arduino/TerrariumControl/.pio/libdeps/ESP32/ESP32Time",
                     "g:/projects arduino/TerrariumControl/.pio/libdeps/ESP32/TFT_eWidget/src",
@@ -453,6 +459,7 @@
                     "g:/projects arduino/TerrariumControl/lib/ESP32Time",
                     "g:/projects arduino/TerrariumControl/lib/TFT_eWidget/src",
                     "g:/projects arduino/TerrariumControl/.pio/libdeps/ESP32/FastLED/src",
+                    "g:/projects arduino/TerrariumControl/.pio/libdeps/ESP32/RTClib/src",
                     "g:/projects arduino/TerrariumControl/.pio/libdeps/ESP32/TFT_eSPI",
                     "C:/Users/benn2/.platformio/packages/framework-arduinoespressif32/libraries/ArduinoOTA/src",
                     "C:/Users/benn2/.platformio/packages/framework-arduinoespressif32/libraries/AsyncUDP/src",
@@ -482,7 +489,6 @@
                     "C:/Users/benn2/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
                     "C:/Users/benn2/.platformio/packages/framework-arduinoespressif32/libraries/WiFiClientSecure/src",
                     "C:/Users/benn2/.platformio/packages/framework-arduinoespressif32/libraries/WiFiProv/src",
-                    "C:/Users/benn2/.platformio/packages/framework-arduinoespressif32/libraries/Wire/src",
                     ""
                 ]
             },
