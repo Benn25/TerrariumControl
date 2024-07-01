@@ -512,8 +512,9 @@ if(IO == 2){//to do only on mist turn
         PinOutStates[1] = 1; //activate pump
         IOtimeStamps[1] = millis();//reset the pump timestamp
         IOdurations[1] = IOstates[minOfDay() / 5][2]; //set the same duration as mist for pump
+        digitalWrite(Out_Pin[1]/*pump*/, PinOutStates[1]/*this is 1*/); //special case, switch on the pump
         }
-        }
+  }
       
       digitalWrite(Out_Pin[IO], PinOutStates[IO]); //switch ON or OFF the needed pins
       Serial.print("a change in state was detected in IO : ");
